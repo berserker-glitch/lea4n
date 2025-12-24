@@ -20,18 +20,23 @@ export default function SignupPage() {
     const [password, setPassword] = useState("");
     const [agreedToTerms, setAgreedToTerms] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!agreedToTerms) return;
 
         setIsLoading(true);
+        setError(null);
 
-        // Mock signup - accepts any credentials
-        setTimeout(() => {
-            signup(name, email, password);
+        const result = await signup(name, email, password);
+
+        if (result.error) {
+            setError(result.error);
+            setIsLoading(false);
+        } else {
             router.push("/dashboard");
-        }, 500);
+        }
     };
 
     return (
@@ -48,6 +53,11 @@ export default function SignupPage() {
             }
         >
             <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                    <div className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-950/20 rounded-md">
+                        {error}
+                    </div>
+                )}
                 <div className="space-y-2">
                     <Label htmlFor="name">Full Name</Label>
                     <Input
@@ -78,9 +88,10 @@ export default function SignupPage() {
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
                         required
+                        minLength={8}
                     />
                     <p className="text-xs text-muted-foreground">
-                        Must be at least 8 characters
+                        Must be at least 8 characters with uppercase, lowercase, and number
                     </p>
                 </div>
                 <div className="flex items-start space-x-2">

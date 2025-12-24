@@ -1,7 +1,21 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { getUser, User } from "./auth";
+import {
+    createContext,
+    useContext,
+    useState,
+    useEffect,
+    useCallback,
+    ReactNode,
+} from "react";
+import { getUser, User, isAuthenticated, logout as authLogout } from "./auth";
+import {
+    subjectsApi,
+    conversationsApi,
+    SubjectResponse,
+    ConversationResponse,
+    ApiError,
+} from "./api";
 
 // Types
 export interface Conversation {
@@ -51,6 +65,8 @@ interface AppState {
     currentSubjectId: string | null;
     currentConversationId: string | null;
     sidebarOpen: boolean;
+    isLoading: boolean;
+    error: string | null;
 }
 
 interface AppContextValue extends AppState {
@@ -59,152 +75,150 @@ interface AppContextValue extends AppState {
     setCurrentSubjectId: (id: string | null) => void;
     setCurrentConversationId: (id: string | null) => void;
     setSidebarOpen: (open: boolean) => void;
-    addSubject: (name: string, color: string) => Subject;
-    addConversation: (subjectId: string, title: string) => Conversation;
+    addSubject: (name: string, color: string) => Promise<Subject | null>;
+    addConversation: (subjectId: string, title: string) => Promise<Conversation | null>;
     addMessage: (conversationId: string, role: "user" | "assistant", content: string) => Message;
     addFile: (file: Omit<FileItem, "id" | "uploadedAt">) => FileItem;
     deleteFile: (fileId: string) => void;
+    deleteSubject: (subjectId: string) => Promise<void>;
+    deleteConversation: (conversationId: string) => Promise<void>;
     togglePinSubject: (subjectId: string) => void;
     togglePinConversation: (subjectId: string, conversationId: string) => void;
     setFileTag: (fileId: string, tag: FileTag) => void;
     getCurrentSubject: () => Subject | undefined;
     getCurrentConversation: () => Conversation | undefined;
     getSubjectFiles: (subjectId: string) => FileItem[];
+    refreshData: () => Promise<void>;
+    logout: () => void;
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined);
 
-// Sample data
-const sampleSubjects: Subject[] = [
-    {
-        id: "1",
-        name: "Mathematics",
-        color: "bg-chart-4",
-        isPinned: true,
-        conversations: [
-            {
-                id: "1-1",
-                title: "Calculus Integration",
-                subjectId: "1",
-                messages: [],
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            },
-            {
-                id: "1-2",
-                title: "Linear Algebra Help",
-                subjectId: "1",
-                messages: [],
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            },
-        ],
-        createdAt: new Date(),
-    },
-    {
-        id: "2",
-        name: "Physics",
-        color: "bg-chart-1",
-        conversations: [
-            {
-                id: "2-1",
-                title: "Quantum Mechanics",
-                subjectId: "2",
-                messages: [],
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            },
-        ],
-        createdAt: new Date(),
-    },
-    {
-        id: "3",
-        name: "Chemistry",
-        color: "bg-chart-2",
-        conversations: [],
-        createdAt: new Date(),
-    },
-    {
-        id: "4",
-        name: "Computer Science",
-        color: "bg-chart-3",
-        conversations: [
-            {
-                id: "4-1",
-                title: "Algorithms & Data Structures",
-                subjectId: "4",
-                messages: [],
-                createdAt: new Date(),
-                updatedAt: new Date(),
-            },
-        ],
-        createdAt: new Date(),
-    },
-];
-
-const sampleFiles: FileItem[] = [
-    {
-        id: "f1",
-        name: "Calculus Textbook.pdf",
-        type: "pdf",
-        size: "15.2 MB",
-        subjectId: "1",
-        tag: "Course",
-        uploadedAt: new Date(),
-    },
-    {
-        id: "f2",
-        name: "Lecture Notes Week 1.pdf",
-        type: "pdf",
-        size: "2.4 MB",
-        subjectId: "1",
-        tag: "Course",
-        uploadedAt: new Date(),
-    },
-    {
-        id: "f3",
-        name: "Practice Problems.pdf",
-        type: "document",
-        size: "890 KB",
-        subjectId: "1",
-        tag: "Exercise",
-        uploadedAt: new Date(),
-    },
-    {
-        id: "f4",
-        name: "Physics Lab Report.pdf",
-        type: "pdf",
-        size: "1.2 MB",
-        subjectId: "2",
-        tag: "Exam",
-        uploadedAt: new Date(),
-    },
+// Color palette for subjects
+const SUBJECT_COLORS = [
+    "bg-chart-1",
+    "bg-chart-2",
+    "bg-chart-3",
+    "bg-chart-4",
+    "bg-chart-5",
 ];
 
 function generateId(): string {
     return Math.random().toString(36).substring(2, 15);
 }
 
+// Convert API response to local Subject type
+function mapSubjectResponse(
+    subject: SubjectResponse,
+    conversations: Conversation[] = []
+): Subject {
+    return {
+        id: subject.id,
+        name: subject.title,
+        color: SUBJECT_COLORS[Math.floor(Math.random() * SUBJECT_COLORS.length)],
+        conversations,
+        createdAt: new Date(subject.createdAt),
+    };
+}
+
+// Convert API response to local Conversation type
+function mapConversationResponse(conv: ConversationResponse): Conversation {
+    return {
+        id: conv.id,
+        title: conv.title,
+        subjectId: conv.subjectId,
+        messages: conv.messages?.map((m) => ({
+            id: m.id,
+            role: m.role.toLowerCase() as "user" | "assistant",
+            content: m.content,
+            timestamp: new Date(m.createdAt),
+        })) || [],
+        createdAt: new Date(conv.createdAt),
+        updatedAt: new Date(conv.updatedAt),
+    };
+}
+
 export function AppProvider({ children }: { children: ReactNode }) {
     const [state, setState] = useState<AppState>({
         user: null,
-        subjects: sampleSubjects,
-        files: sampleFiles,
+        subjects: [],
+        files: [],
         currentView: "chat",
         currentSubjectId: null,
         currentConversationId: null,
         sidebarOpen: true,
+        isLoading: true,
+        error: null,
     });
 
+    // Fetch all data from API
+    const refreshData = useCallback(async () => {
+        if (!isAuthenticated()) {
+            setState((prev) => ({ ...prev, isLoading: false, subjects: [], files: [] }));
+            return;
+        }
+
+        setState((prev) => ({ ...prev, isLoading: true, error: null }));
+
+        try {
+            // Fetch subjects
+            const subjectsResponse = await subjectsApi.list({ limit: 100 });
+            const subjectsData = subjectsResponse.data || [];
+
+            // Fetch conversations for each subject
+            const subjectsWithConversations: Subject[] = await Promise.all(
+                subjectsData.map(async (subject) => {
+                    try {
+                        const convsResponse = await conversationsApi.listBySubject(subject.id, {
+                            limit: 100,
+                        });
+                        const conversations = (convsResponse.data || []).map(mapConversationResponse);
+                        return mapSubjectResponse(subject, conversations);
+                    } catch {
+                        return mapSubjectResponse(subject, []);
+                    }
+                })
+            );
+
+            setState((prev) => ({
+                ...prev,
+                subjects: subjectsWithConversations,
+                isLoading: false,
+            }));
+        } catch (error) {
+            const message = error instanceof ApiError ? error.message : "Failed to load data";
+            setState((prev) => ({ ...prev, error: message, isLoading: false }));
+        }
+    }, []);
+
+    // Initialize user and fetch data
     useEffect(() => {
         const user = getUser();
         if (user) {
             setState((prev) => ({ ...prev, user }));
+            refreshData();
+        } else {
+            setState((prev) => ({ ...prev, isLoading: false }));
         }
-    }, []);
+    }, [refreshData]);
 
     const setUser = (user: User | null) => {
         setState((prev) => ({ ...prev, user }));
+        if (user) {
+            refreshData();
+        }
+    };
+
+    const logout = () => {
+        authLogout();
+        setState((prev) => ({
+            ...prev,
+            user: null,
+            subjects: [],
+            files: [],
+            currentSubjectId: null,
+            currentConversationId: null,
+        }));
     };
 
     const setCurrentView = (view: "chat" | "files") => {
@@ -223,41 +237,100 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setState((prev) => ({ ...prev, sidebarOpen: open }));
     };
 
-    const addSubject = (name: string, color: string): Subject => {
-        const subject: Subject = {
-            id: generateId(),
-            name,
-            color,
-            conversations: [],
-            createdAt: new Date(),
-        };
-        setState((prev) => ({
-            ...prev,
-            subjects: [...prev.subjects, subject],
-        }));
-        return subject;
+    const addSubject = async (name: string, color: string): Promise<Subject | null> => {
+        try {
+            const response = await subjectsApi.create({ title: name });
+            if (response.data) {
+                const subject: Subject = {
+                    id: response.data.id,
+                    name: response.data.title,
+                    color,
+                    conversations: [],
+                    createdAt: new Date(response.data.createdAt),
+                };
+                setState((prev) => ({
+                    ...prev,
+                    subjects: [...prev.subjects, subject],
+                }));
+                return subject;
+            }
+            return null;
+        } catch (error) {
+            console.error("Failed to create subject:", error);
+            return null;
+        }
     };
 
-    const addConversation = (subjectId: string, title: string): Conversation => {
-        const conversation: Conversation = {
-            id: generateId(),
-            title,
-            subjectId,
-            messages: [],
-            createdAt: new Date(),
-            updatedAt: new Date(),
-        };
-        setState((prev) => ({
-            ...prev,
-            subjects: prev.subjects.map((s) =>
-                s.id === subjectId
-                    ? { ...s, conversations: [...s.conversations, conversation] }
-                    : s
-            ),
-        }));
-        return conversation;
+    const deleteSubject = async (subjectId: string): Promise<void> => {
+        try {
+            await subjectsApi.delete(subjectId);
+            setState((prev) => ({
+                ...prev,
+                subjects: prev.subjects.filter((s) => s.id !== subjectId),
+                currentSubjectId:
+                    prev.currentSubjectId === subjectId ? null : prev.currentSubjectId,
+                currentConversationId: prev.subjects.find((s) => s.id === subjectId)
+                    ?.conversations.some((c) => c.id === prev.currentConversationId)
+                    ? null
+                    : prev.currentConversationId,
+            }));
+        } catch (error) {
+            console.error("Failed to delete subject:", error);
+        }
     };
 
+    const addConversation = async (
+        subjectId: string,
+        title: string
+    ): Promise<Conversation | null> => {
+        try {
+            const response = await conversationsApi.create(subjectId, { title });
+            if (response.data) {
+                const conversation: Conversation = {
+                    id: response.data.id,
+                    title: response.data.title,
+                    subjectId,
+                    messages: [],
+                    createdAt: new Date(response.data.createdAt),
+                    updatedAt: new Date(response.data.updatedAt),
+                };
+                setState((prev) => ({
+                    ...prev,
+                    subjects: prev.subjects.map((s) =>
+                        s.id === subjectId
+                            ? { ...s, conversations: [...s.conversations, conversation] }
+                            : s
+                    ),
+                }));
+                return conversation;
+            }
+            return null;
+        } catch (error) {
+            console.error("Failed to create conversation:", error);
+            return null;
+        }
+    };
+
+    const deleteConversation = async (conversationId: string): Promise<void> => {
+        try {
+            await conversationsApi.delete(conversationId);
+            setState((prev) => ({
+                ...prev,
+                subjects: prev.subjects.map((s) => ({
+                    ...s,
+                    conversations: s.conversations.filter((c) => c.id !== conversationId),
+                })),
+                currentConversationId:
+                    prev.currentConversationId === conversationId
+                        ? null
+                        : prev.currentConversationId,
+            }));
+        } catch (error) {
+            console.error("Failed to delete conversation:", error);
+        }
+    };
+
+    // Messages are stored locally for now (backend message API can be added later)
     const addMessage = (
         conversationId: string,
         role: "user" | "assistant",
@@ -283,6 +356,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return message;
     };
 
+    // Files are stored locally for now (file upload API can be added later)
     const addFile = (file: Omit<FileItem, "id" | "uploadedAt">): FileItem => {
         const newFile: FileItem = {
             ...file,
@@ -331,9 +405,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const setFileTag = (fileId: string, tag: FileTag) => {
         setState((prev) => ({
             ...prev,
-            files: prev.files.map((f) =>
-                f.id === fileId ? { ...f, tag } : f
-            ),
+            files: prev.files.map((f) => (f.id === fileId ? { ...f, tag } : f)),
         }));
     };
 
@@ -367,12 +439,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
         addMessage,
         addFile,
         deleteFile,
+        deleteSubject,
+        deleteConversation,
         togglePinSubject,
         togglePinConversation,
         setFileTag,
         getCurrentSubject,
         getCurrentConversation,
         getSubjectFiles,
+        refreshData,
+        logout,
     };
 
     return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

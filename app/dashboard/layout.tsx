@@ -70,11 +70,12 @@ export default function DashboardLayout({
         setCurrentConversationId(conversationId);
     };
 
-    const handleNewConversation = (subjectId: string) => {
-        const conversation = addConversation(subjectId, "New Conversation");
+    const handleNewConversation = async (subjectId: string) => {
+        const conversation = await addConversation(subjectId, "New Conversation");
         router.push(`/dashboard/${subjectId}`);
-        // We might want to auto-select this conversation?
-        setCurrentConversationId(conversation.id);
+        if (conversation) {
+            setCurrentConversationId(conversation.id);
+        }
     };
 
     // Sort subjects: Pinned first, then Created Date

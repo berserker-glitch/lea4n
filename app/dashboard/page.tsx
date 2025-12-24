@@ -14,7 +14,7 @@ export default function DashboardPage() {
             <div className="max-w-2xl text-center space-y-8">
                 <div className="space-y-2">
                     <h1 className="text-4xl font-semibold tracking-tight text-foreground">
-                        Welcome back, {user.name.split(" ")[0]}!
+                        Welcome back, {(user.name || user.email.split("@")[0]).split(" ")[0]}!
                     </h1>
                     <p className="text-muted-foreground text-lg">
                         Select a subject from the sidebar to start learning.

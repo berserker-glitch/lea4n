@@ -41,16 +41,18 @@ export function CreateSubjectDialog({
         return colors[Math.floor(Math.random() * colors.length)];
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!name.trim()) return;
 
         setIsLoading(true);
         try {
-            const subject = addSubject(name, getRandomColor());
+            const subject = await addSubject(name, getRandomColor());
             onOpenChange(false);
             setName("");
-            router.push(`/dashboard/${subject.id}`);
+            if (subject) {
+                router.push(`/dashboard/${subject.id}`);
+            }
         } catch (error) {
             console.error(error);
         } finally {

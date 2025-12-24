@@ -3,6 +3,7 @@ import { Catamaran } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppProvider } from "@/lib/store";
+import { NoiseOverlay } from "@/components/ui/noise-overlay";
 
 const catamaran = Catamaran({
   variable: "--font-sans",
@@ -44,7 +45,9 @@ export default function RootLayout({
             {children}
           </TooltipProvider>
         </AppProvider>
+        <NoiseOverlay />
       </body>
     </html>
   );
 }
+

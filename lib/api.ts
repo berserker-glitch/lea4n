@@ -309,3 +309,106 @@ export const conversationsApi = {
         });
     },
 };
+
+// ===========================================
+// FILES API
+// ===========================================
+
+export type FileType = "PDF" | "IMAGE" | "DOCUMENT" | "OTHER";
+export type FileTag = "EXAM" | "EXERCISE" | "COURSE";
+
+export interface FileResponse {
+    id: string;
+    name: string;
+    originalName: string;
+    mimeType: string;
+    size: number;
+    type: FileType;
+    path: string;
+    tag?: FileTag;
+    subjectId: string;
+    userId: string;
+    createdAt: string;
+    updatedAt: string;
+    subject?: {
+        id: string;
+        title: string;
+    };
+}
+
+const API_BASE_URL_RAW = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+
+export const filesApi = {
+    async upload(subjectId: string, files: File[], tag?: FileTag) {
+        const formData = new FormData();
+        files.forEach((file) => formData.append("files", file));
+        if (tag) formData.append("tag", tag);
+
+        const token = getToken();
+        const response = await fetch(
+            `${API_BASE_URL_RAW}/subjects/${subjectId}/files`,
+            {
+                method: "POST",
+                headers: token ? { Authorization: `Bearer ${token}` } : {},
+                body: formData,
+            }
+        );
+
+        const data: ApiResponse<FileResponse[]> = await response.json();
+
+        if (!response.ok) {
+            throw new ApiError(
+                data.error?.message || "Upload failed",
+                response.status,
+                data.error?.code
+            );
+        }
+
+        return data;
+    },
+
+    async listBySubject(
+        subjectId: string,
+        params?: { page?: number; limit?: number; type?: FileType; tag?: FileTag }
+    ) {
+        const searchParams = new URLSearchParams();
+        if (params?.page) searchParams.set("page", String(params.page));
+        if (params?.limit) searchParams.set("limit", String(params.limit));
+        if (params?.type) searchParams.set("type", params.type);
+        if (params?.tag) searchParams.set("tag", params.tag);
+
+        const query = searchParams.toString();
+        return request<FileResponse[]>(
+            `/subjects/${subjectId}/files${query ? `?${query}` : ""}`
+        );
+    },
+
+    async list(params?: { page?: number; limit?: number; type?: FileType; tag?: FileTag }) {
+        const searchParams = new URLSearchParams();
+        if (params?.page) searchParams.set("page", String(params.page));
+        if (params?.limit) searchParams.set("limit", String(params.limit));
+        if (params?.type) searchParams.set("type", params.type);
+        if (params?.tag) searchParams.set("tag", params.tag);
+
+        const query = searchParams.toString();
+        return request<FileResponse[]>(`/files${query ? `?${query}` : ""}`);
+    },
+
+    async get(fileId: string) {
+        return request<FileResponse>(`/files/${fileId}`);
+    },
+
+    async updateTag(fileId: string, tag: FileTag) {
+        return request<FileResponse>(`/files/${fileId}`, {
+            method: "PATCH",
+            body: JSON.stringify({ tag }),
+        });
+    },
+
+    async delete(fileId: string) {
+        return request(`/files/${fileId}`, {
+            method: "DELETE",
+        });
+    },
+};
+

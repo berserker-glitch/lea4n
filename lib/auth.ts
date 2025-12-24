@@ -1,21 +1,20 @@
-// Mock authentication utilities for frontend-only auth
-// Accepts any credentials
+/**
+ * Authentication utilities using the backend API
+ */
+import { authApi, getToken, removeToken, ApiError } from "./api";
 
 export interface User {
     id: string;
-    name: string;
+    name: string | null;
     email: string;
-    avatar?: string;
+    createdAt?: string;
 }
 
 const USER_STORAGE_KEY = "lea4n_user";
 
-// Generate a simple ID
-function generateId(): string {
-    return Math.random().toString(36).substring(2, 15);
-}
-
-// Get the current user from localStorage
+/**
+ * Get the current user from localStorage
+ */
 export function getUser(): User | null {
     if (typeof window === "undefined") return null;
 
@@ -29,42 +28,118 @@ export function getUser(): User | null {
     }
 }
 
-// Mock login - accepts any credentials
-export function login(email: string, _password: string): User {
-    const name = email.split("@")[0].replace(/[._]/g, " ");
-    const capitalizedName = name
-        .split(" ")
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(" ");
-
-    const user: User = {
-        id: generateId(),
-        name: capitalizedName,
-        email,
-    };
-
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-    return user;
+/**
+ * Store user in localStorage
+ */
+function setUser(user: User): void {
+    if (typeof window !== "undefined") {
+        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+    }
 }
 
-// Mock signup - accepts any credentials
-export function signup(name: string, email: string, _password: string): User {
-    const user: User = {
-        id: generateId(),
-        name,
-        email,
-    };
-
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
-    return user;
+/**
+ * Remove user from localStorage
+ */
+function clearUser(): void {
+    if (typeof window !== "undefined") {
+        localStorage.removeItem(USER_STORAGE_KEY);
+    }
 }
 
-// Logout
+/**
+ * Login with email and password
+ */
+export async function login(
+    email: string,
+    password: string
+): Promise<{ user: User; error?: string }> {
+    try {
+        const response = await authApi.login({ email, password });
+
+        if (response.data) {
+            const user: User = {
+                id: response.data.user.id,
+                name: response.data.user.name,
+                email: response.data.user.email,
+                createdAt: response.data.user.createdAt,
+            };
+            setUser(user);
+            return { user };
+        }
+
+        return { user: null as unknown as User, error: "Login failed" };
+    } catch (error) {
+        if (error instanceof ApiError) {
+            return { user: null as unknown as User, error: error.message };
+        }
+        return { user: null as unknown as User, error: "Network error. Please try again." };
+    }
+}
+
+/**
+ * Signup with name, email and password
+ */
+export async function signup(
+    name: string,
+    email: string,
+    password: string
+): Promise<{ user: User; error?: string }> {
+    try {
+        const response = await authApi.register({ email, password, name });
+
+        if (response.data) {
+            const user: User = {
+                id: response.data.user.id,
+                name: response.data.user.name,
+                email: response.data.user.email,
+                createdAt: response.data.user.createdAt,
+            };
+            setUser(user);
+            return { user };
+        }
+
+        return { user: null as unknown as User, error: "Signup failed" };
+    } catch (error) {
+        if (error instanceof ApiError) {
+            return { user: null as unknown as User, error: error.message };
+        }
+        return { user: null as unknown as User, error: "Network error. Please try again." };
+    }
+}
+
+/**
+ * Logout
+ */
 export function logout(): void {
-    localStorage.removeItem(USER_STORAGE_KEY);
+    clearUser();
+    removeToken();
 }
 
-// Check if user is authenticated
+/**
+ * Check if user is authenticated
+ */
 export function isAuthenticated(): boolean {
-    return getUser() !== null;
+    return getUser() !== null && getToken() !== null;
+}
+
+/**
+ * Fetch current user profile from API
+ */
+export async function fetchProfile(): Promise<User | null> {
+    try {
+        const response = await authApi.getProfile();
+        if (response.data) {
+            const user: User = {
+                id: response.data.id,
+                name: response.data.name,
+                email: response.data.email,
+                createdAt: response.data.createdAt,
+            };
+            setUser(user);
+            return user;
+        }
+        return null;
+    } catch {
+        return null;
+    }
 }
