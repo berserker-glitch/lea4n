@@ -42,7 +42,6 @@ export default function DashboardLayout({
         setSidebarOpen,
         setCurrentSubjectId,
         setCurrentConversationId,
-        addConversation,
         deleteConversation,
         togglePinSubject,
         togglePinConversation,
@@ -63,24 +62,17 @@ export default function DashboardLayout({
     }, [router, setUser, user]);
 
     const handleSubjectSelect = (subjectId: string) => {
-        // Navigate to subject page
+        // Navigate to subject page (new conversation interface)
         router.push(`/dashboard/${subjectId}`);
         setCurrentSubjectId(subjectId);
+        setCurrentConversationId(null);
     };
 
     const handleConversationSelect = (subjectId: string, conversationId: string) => {
-        // Navigate to subject and set conversation
-        router.push(`/dashboard/${subjectId}`);
+        // Navigate to conversation URL with proper pattern
+        router.push(`/dashboard/${subjectId}/${conversationId}`);
         setCurrentSubjectId(subjectId);
         setCurrentConversationId(conversationId);
-    };
-
-    const handleNewConversation = async (subjectId: string) => {
-        const conversation = await addConversation(subjectId, "New Conversation");
-        router.push(`/dashboard/${subjectId}`);
-        if (conversation) {
-            setCurrentConversationId(conversation.id);
-        }
     };
 
     // Sort subjects: Pinned first, then Created Date
@@ -151,7 +143,6 @@ export default function DashboardLayout({
                                         isPinned={subject.isPinned}
                                         onSelect={handleSubjectSelect}
                                         onConversationSelect={handleConversationSelect}
-                                        onNewConversation={handleNewConversation}
                                         onTogglePin={togglePinSubject}
                                         onTogglePinConversation={togglePinConversation}
                                         onDeleteConversation={deleteConversation}

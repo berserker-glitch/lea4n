@@ -297,7 +297,7 @@ export const conversationsApi = {
         return request<ConversationResponse>(`/conversations/${conversationId}`);
     },
 
-    async create(subjectId: string, data: { title: string }) {
+    async create(subjectId: string, data: { title?: string; initialMessage?: string }) {
         return request<ConversationResponse>(`/subjects/${subjectId}/conversations`, {
             method: "POST",
             body: JSON.stringify(data),
@@ -321,6 +321,107 @@ export const conversationsApi = {
         return request<ConversationResponse>(`/conversations/${conversationId}/pin`, {
             method: "POST",
         });
+    },
+};
+
+// ===========================================
+// CHAT API (Messages)
+// ===========================================
+
+export interface SendMessageResponse {
+    userMessage: MessageResponse;
+    assistantMessage: MessageResponse;
+}
+
+export const chatApi = {
+    async sendMessage(conversationId: string, content: string) {
+        return request<SendMessageResponse>(`/conversations/${conversationId}/messages`, {
+            method: "POST",
+            body: JSON.stringify({ content }),
+        });
+    },
+
+    /**
+     * Send a message and stream AI response via SSE
+     * @param conversationId - The conversation ID
+     * @param content - The message content  
+     * @param onChunk - Callback for each content chunk
+     * @param onComplete - Callback when streaming completes with full response
+     */
+    async sendMessageStream(
+        conversationId: string,
+        content: string,
+        onChunk: (chunk: string) => void,
+        onComplete: (userMessage: MessageResponse, assistantMessage: MessageResponse) => void
+    ) {
+        const token = getToken();
+
+        const response = await fetch(`${API_BASE_URL}/conversations/${conversationId}/messages/stream`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                ...(token && { Authorization: `Bearer ${token}` }),
+            },
+            body: JSON.stringify({ content }),
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to send message: ${response.status}`);
+        }
+
+        if (!response.body) {
+            throw new Error("No response body");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let userMessage: MessageResponse | null = null;
+        let assistantMessage: MessageResponse | null = null;
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split("\n");
+
+            for (const line of lines) {
+                if (line.startsWith("data: ")) {
+                    const data = line.slice(6).trim();
+
+                    if (data === "[DONE]") {
+                        continue;
+                    }
+
+                    try {
+                        const parsed = JSON.parse(data);
+
+                        if (parsed.type === "userMessage") {
+                            userMessage = parsed.data;
+                        } else if (parsed.type === "assistantMessage") {
+                            assistantMessage = parsed.data;
+                        } else if (parsed.content) {
+                            // Content chunk from streaming
+                            onChunk(parsed.content);
+                        } else if (parsed.error) {
+                            throw new Error(parsed.error);
+                        }
+                    } catch (e) {
+                        // Skip invalid JSON (might be partial)
+                        if (e instanceof SyntaxError) continue;
+                        throw e;
+                    }
+                }
+            }
+        }
+
+        if (userMessage && assistantMessage) {
+            onComplete(userMessage, assistantMessage);
+        }
+    },
+
+    async getMessages(conversationId: string) {
+        return request<MessageResponse[]>(`/conversations/${conversationId}/messages`);
     },
 };
 

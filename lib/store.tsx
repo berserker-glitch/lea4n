@@ -264,11 +264,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
 
     const setCurrentSubjectId = (id: string | null) => {
-        setState((prev) => ({ ...prev, currentSubjectId: id }));
+        setState((prev) => {
+            if (prev.currentSubjectId === id) return prev; // No change needed
+            return { ...prev, currentSubjectId: id };
+        });
     };
 
     const setCurrentConversationId = (id: string | null) => {
-        setState((prev) => ({ ...prev, currentConversationId: id }));
+        setState((prev) => {
+            if (prev.currentConversationId === id) return prev; // No change needed
+            return { ...prev, currentConversationId: id };
+        });
     };
 
     const setSidebarOpen = (open: boolean) => {
