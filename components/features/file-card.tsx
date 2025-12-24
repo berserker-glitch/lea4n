@@ -28,8 +28,9 @@ import {
 interface FileCardProps {
     id: string;
     name: string;
+    originalName: string;
     type: "pdf" | "image" | "video" | "audio" | "document" | "other";
-    size: string;
+    size: number;
     tag?: FileTag;
     uploadedAt: Date;
     thumbnailUrl?: string;
@@ -64,9 +65,16 @@ const tagColors: Record<FileTag, string> = {
     Course: "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20",
 };
 
+function formatFileSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function FileCard({
     id,
     name,
+    originalName,
     type,
     size,
     tag,
@@ -135,13 +143,13 @@ export function FileCard({
             <div className="p-3.5 space-y-1">
                 <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm truncate text-foreground leading-tight" title={name}>
-                            {name}
+                        <p className="font-medium text-sm truncate text-foreground leading-tight" title={originalName}>
+                            {originalName}
                         </p>
                         <div className="flex items-center gap-1.5 mt-1.5 text-[11px] text-muted-foreground">
                             <span className="uppercase font-semibold tracking-wider opacity-70">{type}</span>
                             <span className="w-0.5 h-0.5 rounded-full bg-muted-foreground/50" />
-                            <span>{size}</span>
+                            <span>{formatFileSize(size)}</span>
                         </div>
                     </div>
                     <DropdownMenu>
@@ -155,7 +163,7 @@ export function FileCard({
                             </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem onClick={onDownload} className="gap-2">
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDownload?.(); }} className="gap-2">
                                 <Download className="h-4 w-4" />
                                 Download
                             </DropdownMenuItem>
@@ -166,13 +174,13 @@ export function FileCard({
                                 </DropdownMenuSubTrigger>
                                 <DropdownMenuSubContent>
                                     {(["Exam", "Exercise", "Course"] as FileTag[]).map((t) => (
-                                        <DropdownMenuItem key={t} onClick={() => onTagChange?.(t)}>
+                                        <DropdownMenuItem key={t} onClick={(e) => { e.stopPropagation(); onTagChange?.(t); }}>
                                             {t}
                                         </DropdownMenuItem>
                                     ))}
                                 </DropdownMenuSubContent>
                             </DropdownMenuSub>
-                            <DropdownMenuItem onClick={onDelete} className="text-destructive focus:text-destructive gap-2">
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete?.(); }} className="text-destructive focus:text-destructive gap-2">
                                 <Trash2 className="h-4 w-4" />
                                 Delete
                             </DropdownMenuItem>

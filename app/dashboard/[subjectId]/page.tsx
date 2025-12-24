@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { useApp } from "@/lib/store";
+import { useApp, FileTag } from "@/lib/store";
+import { filesApi, FileTag as ApiFileTag } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // Components
@@ -14,6 +15,7 @@ import { FileGrid } from "@/components/features/file-grid";
 import { FileUploadZone } from "@/components/features/file-upload-zone";
 import { EmptyState } from "@/components/features/empty-state";
 import { SearchInput } from "@/components/features/search-input";
+import { UploadFilesDialog } from "@/components/features/upload-files-dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Upload, FileText } from "lucide-react";
@@ -30,7 +32,8 @@ export default function SubjectPage() {
         getSubjectFiles,
         addMessage,
         currentConversationId,
-        setFileTag,
+        refreshData,
+        deleteFile,
         // We'll need to fetch messages for conversation if we implement persistence fully
     } = useApp();
 
@@ -41,6 +44,62 @@ export default function SubjectPage() {
     const [localMessages, setLocalMessages] = useState<{ role: "user" | "assistant"; content: string; timestamp: Date }[]>([]);
     const [isTyping, setIsTyping] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+
+    // Tag mapping from local to API format
+    const tagToApi: Record<FileTag, ApiFileTag> = {
+        Exam: "EXAM",
+        Exercise: "EXERCISE",
+        Course: "COURSE",
+    };
+
+    // Handle file deletion
+    const handleDeleteFile = async (fileId: string) => {
+        try {
+            await filesApi.delete(fileId);
+            deleteFile(fileId);
+        } catch (error) {
+            console.error("Failed to delete file:", error);
+        }
+    };
+
+    // Handle tag change
+    const handleTagChange = async (fileId: string, tag: FileTag) => {
+        try {
+            await filesApi.updateTag(fileId, tagToApi[tag]);
+            refreshData();
+        } catch (error) {
+            console.error("Failed to update tag:", error);
+        }
+    };
+
+    // Get file URL from backend
+    const getFileUrl = (fileName: string) => {
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+        const baseUrl = apiUrl.replace("/api", "");
+        return `${baseUrl}/uploads/${fileName}`;
+    };
+
+    // Handle file view (open in new tab)
+    const handleViewFile = (fileId: string) => {
+        const file = filteredFiles.find(f => f.id === fileId);
+        if (file) {
+            window.open(getFileUrl(file.name), "_blank");
+        }
+    };
+
+    // Handle file download
+    const handleDownloadFile = (fileId: string) => {
+        const file = filteredFiles.find(f => f.id === fileId);
+        if (file) {
+            const link = document.createElement("a");
+            link.href = getFileUrl(file.name);
+            link.download = file.originalName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    };
 
     // Sync subject ID
     useEffect(() => {
@@ -185,7 +244,10 @@ export default function SubjectPage() {
                                         placeholder="Search files..."
                                     />
                                 </div>
-                                <Button className="gap-2">
+                                <Button
+                                    className="gap-2"
+                                    onClick={() => setUploadDialogOpen(true)}
+                                >
                                     <Upload className="h-4 w-4" />
                                     Upload Files
                                 </Button>
@@ -194,7 +256,10 @@ export default function SubjectPage() {
                             {filteredFiles.length > 0 ? (
                                 <FileGrid
                                     files={filteredFiles}
-                                    onFileTagChange={setFileTag}
+                                    onFileClick={handleViewFile}
+                                    onFileDownload={handleDownloadFile}
+                                    onFileDelete={handleDeleteFile}
+                                    onFileTagChange={handleTagChange}
                                 />
                             ) : searchQuery ? (
                                 <EmptyState
@@ -203,14 +268,25 @@ export default function SubjectPage() {
                                     description={`No files match "${searchQuery}"`}
                                 />
                             ) : (
-                                <FileUploadZone
-                                    onFilesSelect={(files) => console.log("Files:", files)}
+                                <EmptyState
+                                    icon={FileText}
+                                    title="No files yet"
+                                    description="Upload files using the button above"
                                 />
                             )}
                         </div>
                     </div>
                 )}
             </div>
+
+            {/* Upload Dialog */}
+            <UploadFilesDialog
+                open={uploadDialogOpen}
+                onOpenChange={setUploadDialogOpen}
+                subjectId={subjectId}
+                onSuccess={() => refreshData()}
+            />
         </div>
     );
 }
+

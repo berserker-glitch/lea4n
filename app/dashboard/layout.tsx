@@ -43,7 +43,9 @@ export default function DashboardLayout({
         setCurrentSubjectId,
         setCurrentConversationId,
         addConversation,
+        deleteConversation,
         togglePinSubject,
+        togglePinConversation,
     } = useApp();
 
     const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -66,7 +68,10 @@ export default function DashboardLayout({
         setCurrentSubjectId(subjectId);
     };
 
-    const handleConversationSelect = (conversationId: string) => {
+    const handleConversationSelect = (subjectId: string, conversationId: string) => {
+        // Navigate to subject and set conversation
+        router.push(`/dashboard/${subjectId}`);
+        setCurrentSubjectId(subjectId);
         setCurrentConversationId(conversationId);
     };
 
@@ -148,6 +153,8 @@ export default function DashboardLayout({
                                         onConversationSelect={handleConversationSelect}
                                         onNewConversation={handleNewConversation}
                                         onTogglePin={togglePinSubject}
+                                        onTogglePinConversation={togglePinConversation}
+                                        onDeleteConversation={deleteConversation}
                                     />
                                 ))}
                             </div>

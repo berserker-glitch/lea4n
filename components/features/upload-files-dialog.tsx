@@ -185,7 +185,7 @@ export function UploadFilesDialog({
                         <Label>Tag (optional)</Label>
                         <Select
                             value={tag}
-                            onValueChange={(v) => setTag(v as FileTag)}
+                            onValueChange={(v: string) => setTag(v as FileTag)}
                         >
                             <SelectTrigger>
                                 <SelectValue placeholder="Select a tag" />

@@ -70,6 +70,7 @@ export interface SubjectResponse {
     id: string;
     title: string;
     description: string | null;
+    isPinned?: boolean;
     userId: string;
     createdAt: string;
     updatedAt: string;
@@ -82,6 +83,7 @@ export interface ConversationResponse {
     id: string;
     title: string;
     subjectId: string;
+    isPinned?: boolean;
     userId: string;
     createdAt: string;
     updatedAt: string;
@@ -253,6 +255,12 @@ export const subjectsApi = {
             method: "DELETE",
         });
     },
+
+    async togglePin(subjectId: string) {
+        return request<SubjectResponse>(`/subjects/${subjectId}/pin`, {
+            method: "POST",
+        });
+    },
 };
 
 // ===========================================
@@ -306,6 +314,12 @@ export const conversationsApi = {
     async delete(conversationId: string) {
         return request(`/conversations/${conversationId}`, {
             method: "DELETE",
+        });
+    },
+
+    async togglePin(conversationId: string) {
+        return request<ConversationResponse>(`/conversations/${conversationId}/pin`, {
+            method: "POST",
         });
     },
 };

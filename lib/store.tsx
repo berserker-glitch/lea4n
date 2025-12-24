@@ -12,8 +12,10 @@ import { getUser, User, isAuthenticated, logout as authLogout } from "./auth";
 import {
     subjectsApi,
     conversationsApi,
+    filesApi,
     SubjectResponse,
     ConversationResponse,
+    FileResponse,
     ApiError,
 } from "./api";
 
@@ -49,8 +51,10 @@ export type FileTag = "Exam" | "Exercise" | "Course";
 export interface FileItem {
     id: string;
     name: string;
+    originalName: string;
     type: "pdf" | "image" | "video" | "audio" | "document" | "other";
-    size: string;
+    mimeType: string;
+    size: number;
     subjectId: string;
     tag?: FileTag;
     uploadedAt: Date;
@@ -117,6 +121,7 @@ function mapSubjectResponse(
         name: subject.title,
         color: SUBJECT_COLORS[Math.floor(Math.random() * SUBJECT_COLORS.length)],
         conversations,
+        isPinned: subject.isPinned || false,
         createdAt: new Date(subject.createdAt),
     };
 }
@@ -133,8 +138,35 @@ function mapConversationResponse(conv: ConversationResponse): Conversation {
             content: m.content,
             timestamp: new Date(m.createdAt),
         })) || [],
+        isPinned: conv.isPinned || false,
         createdAt: new Date(conv.createdAt),
         updatedAt: new Date(conv.updatedAt),
+    };
+}
+
+// Convert API response to local FileItem type
+function mapFileResponse(file: FileResponse): FileItem {
+    const typeMap: Record<string, FileItem["type"]> = {
+        PDF: "pdf",
+        IMAGE: "image",
+        DOCUMENT: "document",
+        OTHER: "other",
+    };
+    const tagMap: Record<string, FileTag> = {
+        EXAM: "Exam",
+        EXERCISE: "Exercise",
+        COURSE: "Course",
+    };
+    return {
+        id: file.id,
+        name: file.name,
+        originalName: file.originalName,
+        type: typeMap[file.type] || "other",
+        mimeType: file.mimeType,
+        size: file.size,
+        subjectId: file.subjectId,
+        tag: file.tag ? tagMap[file.tag] : undefined,
+        uploadedAt: new Date(file.createdAt),
     };
 }
 
@@ -161,9 +193,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
         try {
-            // Fetch subjects
-            const subjectsResponse = await subjectsApi.list({ limit: 100 });
+            // Fetch subjects and files in parallel
+            const [subjectsResponse, filesResponse] = await Promise.all([
+                subjectsApi.list({ limit: 100 }),
+                filesApi.list({ limit: 100 }),
+            ]);
+
             const subjectsData = subjectsResponse.data || [];
+            const filesData = (filesResponse.data || []).map(mapFileResponse);
 
             // Fetch conversations for each subject
             const subjectsWithConversations: Subject[] = await Promise.all(
@@ -183,6 +220,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setState((prev) => ({
                 ...prev,
                 subjects: subjectsWithConversations,
+                files: filesData,
                 isLoading: false,
             }));
         } catch (error) {
@@ -377,29 +415,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }));
     };
 
-    const togglePinSubject = (subjectId: string) => {
-        setState((prev) => ({
-            ...prev,
-            subjects: prev.subjects.map((s) =>
-                s.id === subjectId ? { ...s, isPinned: !s.isPinned } : s
-            ),
-        }));
+    const togglePinSubject = async (subjectId: string) => {
+        try {
+            await subjectsApi.togglePin(subjectId);
+            // Update local state optimistically
+            setState((prev) => ({
+                ...prev,
+                subjects: prev.subjects.map((s) =>
+                    s.id === subjectId ? { ...s, isPinned: !s.isPinned } : s
+                ),
+            }));
+        } catch (error) {
+            console.error('Failed to toggle pin subject:', error);
+        }
     };
 
-    const togglePinConversation = (subjectId: string, conversationId: string) => {
-        setState((prev) => ({
-            ...prev,
-            subjects: prev.subjects.map((s) =>
-                s.id === subjectId
-                    ? {
-                        ...s,
-                        conversations: s.conversations.map((c) =>
-                            c.id === conversationId ? { ...c, isPinned: !c.isPinned } : c
-                        ),
-                    }
-                    : s
-            ),
-        }));
+    const togglePinConversation = async (subjectId: string, conversationId: string) => {
+        try {
+            await conversationsApi.togglePin(conversationId);
+            // Update local state optimistically
+            setState((prev) => ({
+                ...prev,
+                subjects: prev.subjects.map((s) =>
+                    s.id === subjectId
+                        ? {
+                            ...s,
+                            conversations: s.conversations.map((c) =>
+                                c.id === conversationId ? { ...c, isPinned: !c.isPinned } : c
+                            ),
+                        }
+                        : s
+                ),
+            }));
+        } catch (error) {
+            console.error('Failed to toggle pin conversation:', error);
+        }
     };
 
     const setFileTag = (fileId: string, tag: FileTag) => {

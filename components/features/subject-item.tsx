@@ -19,6 +19,7 @@ import {
 interface Conversation {
     id: string;
     title: string;
+    isPinned?: boolean;
 }
 
 interface SubjectItemProps {
@@ -30,9 +31,11 @@ interface SubjectItemProps {
     activeConversationId?: string;
     isPinned?: boolean;
     onSelect?: (subjectId: string) => void;
-    onConversationSelect?: (conversationId: string) => void;
+    onConversationSelect?: (subjectId: string, conversationId: string) => void;
     onNewConversation?: (subjectId: string) => void;
     onTogglePin?: (subjectId: string) => void;
+    onTogglePinConversation?: (subjectId: string, conversationId: string) => void;
+    onDeleteConversation?: (conversationId: string) => void;
 }
 
 export function SubjectItem({
@@ -47,8 +50,17 @@ export function SubjectItem({
     onConversationSelect,
     onNewConversation,
     onTogglePin,
+    onTogglePinConversation,
+    onDeleteConversation,
 }: SubjectItemProps) {
     const [isOpen, setIsOpen] = useState(isActive);
+
+    // Sort conversations: pinned first
+    const sortedConversations = [...conversations].sort((a, b) => {
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
+        return 0;
+    });
 
     return (
         <Collapsible open={isOpen} onOpenChange={setIsOpen} className="w-full space-y-1">
@@ -121,29 +133,54 @@ export function SubjectItem({
 
             <CollapsibleContent>
                 <div className="relative ml-3.5 pl-3 pt-0.5 pb-1 space-y-0.5">
-                    {conversations.length === 0 ? (
+                    {sortedConversations.length === 0 ? (
                         <p className="py-2 text-[11px] text-muted-foreground/60 italic pl-1">
                             No conversations yet
                         </p>
                     ) : (
-                        conversations.map((conversation) => (
-                            <Button
-                                key={conversation.id}
-                                variant="ghost"
-                                size="sm"
-                                className={cn(
-                                    "h-8 w-full justify-start px-2 text-sm font-normal transition-colors",
-                                    activeConversationId === conversation.id
-                                        ? "bg-muted text-foreground font-medium"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                                )}
-                                onClick={() => onConversationSelect?.(conversation.id)}
-                            >
-                                <span className="truncate">{conversation.title}</span>
-                                {activeConversationId === conversation.id && (
-                                    <div className="ml-auto h-1.5 w-1.5 rounded-full bg-primary" />
-                                )}
-                            </Button>
+                        sortedConversations.map((conversation) => (
+                            <div key={conversation.id} className="group/conv flex items-center gap-1">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className={cn(
+                                        "h-8 flex-1 justify-start px-2 text-sm font-normal transition-colors",
+                                        activeConversationId === conversation.id
+                                            ? "bg-muted text-foreground font-medium"
+                                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                                    )}
+                                    onClick={() => onConversationSelect?.(id, conversation.id)}
+                                >
+                                    <span className="truncate flex-1 text-left">{conversation.title}</span>
+                                    {conversation.isPinned && <Pin className="h-2.5 w-2.5 text-muted-foreground/70 shrink-0 rotate-45" />}
+                                    {activeConversationId === conversation.id && (
+                                        <div className="ml-1 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                                    )}
+                                </Button>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6 rounded-full text-muted-foreground hover:text-foreground opacity-0 group-hover/conv:opacity-100 transition-opacity shrink-0"
+                                        >
+                                            <MoreHorizontal className="h-3 w-3" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end" className="w-40">
+                                        <DropdownMenuItem onClick={() => onTogglePinConversation?.(id, conversation.id)}>
+                                            {conversation.isPinned ? "Unpin" : "Pin"}
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem>Rename</DropdownMenuItem>
+                                        <DropdownMenuItem
+                                            className="text-destructive focus:text-destructive"
+                                            onClick={() => onDeleteConversation?.(conversation.id)}
+                                        >
+                                            Delete
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
                         ))
                     )}
                 </div>
