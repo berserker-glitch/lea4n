@@ -69,7 +69,7 @@ export default function DashboardLayout({
     };
 
     const handleConversationSelect = (subjectId: string, conversationId: string) => {
-        // Navigate to conversation URL with proper pattern
+        // Navigate to conversation page with /subjectId/conversationId URL
         router.push(`/dashboard/${subjectId}/${conversationId}`);
         setCurrentSubjectId(subjectId);
         setCurrentConversationId(conversationId);
