@@ -2,30 +2,60 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { feedbackApi } from "@/lib/api";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Bot, Copy, Check, ThumbsUp, ThumbsDown } from "lucide-react";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Bot, Copy, Check, ThumbsUp, ThumbsDown, Send, MessageSquareWarning, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 interface ChatMessageProps {
     role: "user" | "assistant";
     content: string;
+    messageId?: string; // Required for feedback functionality
+    initialFeedback?: { isLiked: boolean } | null; // Initial feedback state from server
     timestamp?: Date;
     isLoading?: boolean;
     isStreaming?: boolean;
 }
 
+const FEEDBACK_REASONS = [
+    "Inaccurate information",
+    "Not helpful",
+    "Too long/short",
+    "Confusing response",
+    "Inappropriate content",
+];
+
 export function ChatMessage({
     role,
     content,
+    messageId,
+    initialFeedback,
     timestamp,
     isLoading,
     isStreaming,
 }: ChatMessageProps) {
     const isUser = role === "user";
     const [copied, setCopied] = useState(false);
-    const [liked, setLiked] = useState<boolean | null>(null);
+    // Initialize liked state from server feedback
+    const [liked, setLiked] = useState<boolean | null>(
+        initialFeedback !== undefined ? (initialFeedback?.isLiked ?? null) : null
+    );
+    const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
+    const [feedbackText, setFeedbackText] = useState("");
+    const [selectedReasons, setSelectedReasons] = useState<string[]>([]);
+    const [feedbackSubmitted, setFeedbackSubmitted] = useState(initialFeedback !== null && initialFeedback !== undefined);
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleCopy = async () => {
         try {
@@ -37,12 +67,81 @@ export function ChatMessage({
         }
     };
 
-    const handleLike = () => {
-        setLiked(liked === true ? null : true);
+    const handleLike = async () => {
+        if (!messageId) return;
+
+        try {
+            if (liked === true) {
+                // Remove like
+                await feedbackApi.delete(messageId);
+                setLiked(null);
+            } else {
+                // Submit like
+                await feedbackApi.submit({
+                    messageId,
+                    isLiked: true,
+                });
+                setLiked(true);
+                setFeedbackSubmitted(false);
+            }
+        } catch (err) {
+            console.error("Failed to submit like:", err);
+        }
     };
 
     const handleDislike = () => {
-        setLiked(liked === false ? null : false);
+        if (!messageId) return;
+
+        if (liked === false) {
+            // If already disliked, remove it
+            feedbackApi.delete(messageId).then(() => {
+                setLiked(null);
+                setFeedbackSubmitted(false);
+            }).catch(err => console.error("Failed to remove dislike:", err));
+        } else {
+            // Show feedback dialog when disliking
+            setFeedbackDialogOpen(true);
+        }
+    };
+
+    const toggleReason = (reason: string) => {
+        setSelectedReasons((prev) =>
+            prev.includes(reason)
+                ? prev.filter((r) => r !== reason)
+                : [...prev, reason]
+        );
+    };
+
+    const handleSubmitFeedback = async () => {
+        if (!messageId) return;
+
+        setIsSubmitting(true);
+        try {
+            await feedbackApi.submit({
+                messageId,
+                isLiked: false,
+                reasons: selectedReasons,
+                feedback: feedbackText || undefined,
+            });
+
+            setLiked(false);
+            setFeedbackSubmitted(true);
+            setFeedbackDialogOpen(false);
+            // Reset form
+            setFeedbackText("");
+            setSelectedReasons([]);
+        } catch (err) {
+            console.error("Failed to submit feedback:", err);
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleCloseFeedback = () => {
+        setFeedbackDialogOpen(false);
+        // Reset form without submitting
+        setFeedbackText("");
+        setSelectedReasons([]);
     };
 
     return (
@@ -243,6 +342,75 @@ export function ChatMessage({
                     </div>
                 )}
             </div>
+
+            {/* Feedback Dialog */}
+            <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <MessageSquareWarning className="h-5 w-5 text-primary" />
+                            Help Us Improve
+                        </DialogTitle>
+                        <DialogDescription>
+                            Why did you dislike this response? Your feedback helps us improve.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        {/* Quick reason buttons */}
+                        <div className="flex flex-wrap gap-2">
+                            {FEEDBACK_REASONS.map((reason) => (
+                                <Button
+                                    key={reason}
+                                    variant={selectedReasons.includes(reason) ? "default" : "outline"}
+                                    size="sm"
+                                    className={cn(
+                                        "transition-all",
+                                        selectedReasons.includes(reason) && "bg-primary text-primary-foreground"
+                                    )}
+                                    onClick={() => toggleReason(reason)}
+                                >
+                                    {reason}
+                                </Button>
+                            ))}
+                        </div>
+
+                        {/* Additional feedback textarea */}
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground">
+                                Additional feedback (optional)
+                            </label>
+                            <Textarea
+                                placeholder="Tell us more about what went wrong..."
+                                value={feedbackText}
+                                onChange={(e) => setFeedbackText(e.target.value)}
+                                className="min-h-[100px]"
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter className="gap-2 sm:gap-0">
+                        <Button
+                            variant="ghost"
+                            onClick={handleCloseFeedback}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            onClick={handleSubmitFeedback}
+                            disabled={isSubmitting || (selectedReasons.length === 0 && !feedbackText.trim())}
+                            className="gap-2"
+                        >
+                            {isSubmitting ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                                <Send className="h-4 w-4" />
+                            )}
+                            {isSubmitting ? "Submitting..." : "Submit Feedback"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

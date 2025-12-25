@@ -250,9 +250,11 @@ export default function ConversationPage() {
                                     {messages.map((msg) => (
                                         <ChatMessage
                                             key={msg.id}
+                                            messageId={msg.id}
                                             role={msg.role.toLowerCase() as "user" | "assistant"}
                                             content={msg.content}
                                             timestamp={new Date(msg.createdAt)}
+                                            initialFeedback={msg.feedback}
                                         />
                                     ))}
                                     {streamingContent && (

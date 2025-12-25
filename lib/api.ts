@@ -97,12 +97,20 @@ export interface ConversationResponse {
     };
 }
 
+export interface MessageFeedbackData {
+    id: string;
+    isLiked: boolean;
+    reasons: string[];
+    feedback: string | null;
+}
+
 export interface MessageResponse {
     id: string;
     content: string;
     role: "USER" | "ASSISTANT" | "SYSTEM";
     createdAt: string;
     conversationId: string;
+    feedback?: MessageFeedbackData | null;
 }
 
 /**
@@ -522,6 +530,53 @@ export const filesApi = {
 
     async delete(fileId: string) {
         return request(`/files/${fileId}`, {
+            method: "DELETE",
+        });
+    },
+};
+
+// ===========================================
+// FEEDBACK API
+// ===========================================
+
+export interface FeedbackResponse {
+    id: string;
+    messageId: string;
+    userId: string;
+    isLiked: boolean;
+    reasons: string[];
+    feedback: string | null;
+    createdAt: string;
+}
+
+export const feedbackApi = {
+    /**
+     * Submit feedback for an AI message (like/dislike)
+     */
+    async submit(data: {
+        messageId: string;
+        isLiked: boolean;
+        reasons?: string[];
+        feedback?: string;
+    }) {
+        return request<FeedbackResponse>("/feedback", {
+            method: "POST",
+            body: JSON.stringify(data),
+        });
+    },
+
+    /**
+     * Get feedback for a specific message
+     */
+    async get(messageId: string) {
+        return request<FeedbackResponse | null>(`/feedback/${messageId}`);
+    },
+
+    /**
+     * Delete feedback for a message
+     */
+    async delete(messageId: string) {
+        return request(`/feedback/${messageId}`, {
             method: "DELETE",
         });
     },
