@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 
 // Layout components
 import { Logo } from "@/components/layout/logo";
-import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { UserMenu } from "@/components/layout/user-menu";
 import { SubjectItem } from "@/components/features/subject-item";
 import { CreateSubjectDialog } from "@/components/features/create-subject-dialog";
@@ -154,11 +153,8 @@ export default function DashboardLayout({
                         <CreateSubjectDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
 
                         {/* Sidebar Footer */}
-                        <div className="p-4 h-[88px] flex items-center">
-                            <div className="flex items-center justify-between w-full">
-                                <UserMenu user={user} />
-                                <ThemeToggle />
-                            </div>
+                        <div className="p-4 h-[72px] flex items-center">
+                            <UserMenu user={user} />
                         </div>
                     </>
                 )}

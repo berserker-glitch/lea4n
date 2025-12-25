@@ -41,6 +41,7 @@ export default function ConversationPage() {
     // Chat state
     const [messages, setMessages] = useState<MessageResponse[]>([]);
     const [streamingContent, setStreamingContent] = useState<string>("");
+    const [streamingSources, setStreamingSources] = useState<any[]>([]);
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
     const [isSending, setIsSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -89,12 +90,16 @@ export default function ConversationPage() {
         loadMessages();
     }, [conversationId]);
 
-    // Scroll to bottom when messages change
+    // Scroll to bottom when messages change or load
     useEffect(() => {
         if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            // Radix ScrollArea uses a viewport child for scrolling
+            const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+            if (viewport) {
+                viewport.scrollTop = viewport.scrollHeight;
+            }
         }
-    }, [messages, streamingContent]);
+    }, [messages, streamingContent, isLoadingMessages]);
 
     const currentSubject = subjects.find(s => s.id === subjectId);
     const currentSubjectFiles = getSubjectFiles(subjectId);
@@ -128,13 +133,14 @@ export default function ConversationPage() {
                 (chunk) => {
                     setStreamingContent(prev => prev + chunk);
                 },
-                (userMessage, assistantMessage) => {
+                (userMessage, assistantMessage, sources) => {
                     setMessages(prev => [
                         ...prev.filter(m => m.id !== tempUserMsg.id),
                         userMessage,
-                        assistantMessage,
+                        { ...assistantMessage, sources },
                     ]);
                     setStreamingContent("");
+                    setStreamingSources([]);
                     refreshData();
                 }
             );
@@ -163,6 +169,15 @@ export default function ConversationPage() {
             refreshData();
         } catch (error) {
             console.error("Failed to update tag:", error);
+        }
+    };
+
+    const handleRetryFile = async (fileId: string) => {
+        try {
+            await filesApi.retry(fileId);
+            refreshData();
+        } catch (error) {
+            console.error("Failed to retry file processing:", error);
         }
     };
 
@@ -233,7 +248,7 @@ export default function ConversationPage() {
                     />
                 </div>
 
-                <div className="w-[100px] flex justify-end" />
+                <div className="w-[100px]" />
             </header>
 
             {/* Content */}
@@ -255,6 +270,7 @@ export default function ConversationPage() {
                                             content={msg.content}
                                             timestamp={new Date(msg.createdAt)}
                                             initialFeedback={msg.feedback}
+                                            sources={msg.sources}
                                         />
                                     ))}
                                     {streamingContent && (
@@ -314,6 +330,7 @@ export default function ConversationPage() {
                                     onFileDownload={handleDownloadFile}
                                     onFileDelete={handleDeleteFile}
                                     onFileTagChange={handleTagChange}
+                                    onFileRetry={handleRetryFile}
                                 />
                             ) : searchQuery ? (
                                 <EmptyState

@@ -111,6 +111,12 @@ export interface MessageResponse {
     createdAt: string;
     conversationId: string;
     feedback?: MessageFeedbackData | null;
+    sources?: {
+        fileName: string;
+        fileId: string;
+        tag?: string;
+        similarity?: number;
+    }[];
 }
 
 /**
@@ -342,10 +348,13 @@ export interface SendMessageResponse {
 }
 
 export const chatApi = {
-    async sendMessage(conversationId: string, content: string) {
-        return request<SendMessageResponse>(`/conversations/${conversationId}/messages`, {
+    async sendMessage(
+        conversationId: string,
+        content: string
+    ) {
+        return request<SendMessageResponse>("/rag/query", {
             method: "POST",
-            body: JSON.stringify({ content }),
+            body: JSON.stringify({ conversationId, content }),
         });
     },
 
@@ -360,17 +369,17 @@ export const chatApi = {
         conversationId: string,
         content: string,
         onChunk: (chunk: string) => void,
-        onComplete: (userMessage: MessageResponse, assistantMessage: MessageResponse) => void
+        onComplete: (userMessage: MessageResponse, assistantMessage: MessageResponse, sources: any[]) => void
     ) {
         const token = getToken();
 
-        const response = await fetch(`${API_BASE_URL}/conversations/${conversationId}/messages/stream`, {
+        const response = await fetch(`${API_BASE_URL}/rag/query/stream`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 ...(token && { Authorization: `Bearer ${token}` }),
             },
-            body: JSON.stringify({ content }),
+            body: JSON.stringify({ conversationId, content }),
         });
 
         if (!response.ok) {
@@ -385,6 +394,7 @@ export const chatApi = {
         const decoder = new TextDecoder();
         let userMessage: MessageResponse | null = null;
         let assistantMessage: MessageResponse | null = null;
+        let sources: any[] = [];
 
         while (true) {
             const { done, value } = await reader.read();
@@ -408,6 +418,8 @@ export const chatApi = {
                             userMessage = parsed.data;
                         } else if (parsed.type === "assistantMessage") {
                             assistantMessage = parsed.data;
+                        } else if (parsed.type === "sources") {
+                            sources = parsed.data;
                         } else if (parsed.content) {
                             // Content chunk from streaming
                             onChunk(parsed.content);
@@ -424,7 +436,7 @@ export const chatApi = {
         }
 
         if (userMessage && assistantMessage) {
-            onComplete(userMessage, assistantMessage);
+            onComplete(userMessage, assistantMessage, sources);
         }
     },
 
@@ -434,11 +446,41 @@ export const chatApi = {
 };
 
 // ===========================================
+// RAG API
+// ===========================================
+
+export interface QuestionData {
+    questions: string;
+    sources: { fileName: string; fileId: string }[];
+}
+
+export const ragApi = {
+    async query(params: {
+        conversationId: string;
+        content: string;
+        studyMode?: "ANSWER" | "EXPLAIN" | "QUIZ" | "REVIEW"
+    }) {
+        return request<SendMessageResponse>("/rag/query", {
+            method: "POST",
+            body: JSON.stringify(params),
+        });
+    },
+
+    async generateQuestions(subjectId: string) {
+        return request<QuestionData>("/rag/questions", {
+            method: "POST",
+            body: JSON.stringify({ subjectId }),
+        });
+    },
+};
+
+// ===========================================
 // FILES API
 // ===========================================
 
 export type FileType = "PDF" | "IMAGE" | "DOCUMENT" | "OTHER";
 export type FileTag = "EXAM" | "EXERCISE" | "COURSE";
+export type ProcessStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
 
 export interface FileResponse {
     id: string;
@@ -449,6 +491,9 @@ export interface FileResponse {
     type: FileType;
     path: string;
     tag?: FileTag;
+    processStatus: ProcessStatus;
+    processedAt?: string;
+    chunkCount: number;
     subjectId: string;
     userId: string;
     createdAt: string;
@@ -531,6 +576,18 @@ export const filesApi = {
     async delete(fileId: string) {
         return request(`/files/${fileId}`, {
             method: "DELETE",
+        });
+    },
+
+    async getStatus(fileId: string) {
+        return request<{ processStatus: ProcessStatus; processedAt?: string; chunkCount: number }>(
+            `/files/${fileId}/status`
+        );
+    },
+
+    async retry(fileId: string) {
+        return request(`/files/${fileId}/retry`, {
+            method: "POST",
         });
     },
 };

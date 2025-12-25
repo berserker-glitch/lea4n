@@ -41,7 +41,7 @@ const ACCEPTED_TYPES = {
 
 function getFileIcon(mimeType: string) {
     if (mimeType.startsWith("image/")) {
-        return <Image className="h-4 w-4 text-blue-500" />;
+        return <Image className="h-4 w-4 text-primary" />;
     }
     if (mimeType === "application/pdf") {
         return <FileText className="h-4 w-4 text-red-500" />;

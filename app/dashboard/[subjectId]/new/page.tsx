@@ -110,7 +110,11 @@ export default function NewConversationPage() {
     // Scroll to bottom when messages change
     useEffect(() => {
         if (scrollRef.current) {
-            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            // Radix ScrollArea uses a viewport child for scrolling
+            const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+            if (viewport) {
+                viewport.scrollTop = viewport.scrollHeight;
+            }
         }
     }, [messages, streamingContent]);
 
@@ -140,11 +144,11 @@ export default function NewConversationPage() {
                 (chunk) => {
                     setStreamingContent(prev => prev + chunk);
                 },
-                (userMessage, assistantMessage) => {
+                (userMessage, assistantMessage, sources) => {
                     setMessages(prev => [
-                        ...prev.filter(m => m.id !== tempUserMsg.id),
+                        ...prev.filter(m => m && m.id !== tempUserMsg.id),
                         userMessage,
-                        assistantMessage,
+                        { ...assistantMessage, sources },
                     ]);
                     setStreamingContent("");
                     refreshData();

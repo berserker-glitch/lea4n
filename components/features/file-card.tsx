@@ -23,6 +23,10 @@ import {
     Trash2,
     Eye,
     Tag,
+    Loader2,
+    AlertCircle,
+    CheckCircle2,
+    RefreshCw,
 } from "lucide-react";
 
 interface FileCardProps {
@@ -38,6 +42,8 @@ interface FileCardProps {
     onDelete?: () => void;
     onDownload?: () => void;
     onTagChange?: (tag: FileTag) => void;
+    onRetry?: () => void;
+    processStatus?: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
     className?: string;
 }
 
@@ -62,7 +68,7 @@ const fileColors = {
 const tagColors: Record<FileTag, string> = {
     Exam: "bg-red-500/10 text-red-500 hover:bg-red-500/20",
     Exercise: "bg-green-500/10 text-green-500 hover:bg-green-500/20",
-    Course: "bg-blue-500/10 text-blue-500 hover:bg-blue-500/20",
+    Course: "bg-primary/10 text-primary hover:bg-primary/20",
 };
 
 function formatFileSize(bytes: number): string {
@@ -84,6 +90,8 @@ export function FileCard({
     onDelete,
     onDownload,
     onTagChange,
+    onRetry,
+    processStatus,
     className,
 }: FileCardProps) {
     const Icon = fileIcons[type];
@@ -101,6 +109,26 @@ export function FileCard({
                 <div className="absolute top-2 right-2 z-20">
                     <Badge variant="secondary" className={cn("text-[10px] h-5 px-1.5 font-medium border-0", tagColors[tag])}>
                         {tag}
+                    </Badge>
+                </div>
+            )}
+
+            {/* Processing Status */}
+            {processStatus && processStatus !== "COMPLETED" && (
+                <div className="absolute top-2 left-2 z-20">
+                    <Badge
+                        variant="secondary"
+                        className={cn(
+                            "text-[10px] h-5 px-1.5 font-medium border-0 gap-1",
+                            processStatus === "PROCESSING" && "bg-blue-500/10 text-blue-500",
+                            processStatus === "FAILED" && "bg-red-500/10 text-red-500",
+                            processStatus === "PENDING" && "bg-yellow-500/10 text-yellow-500",
+                        )}
+                    >
+                        {processStatus === "PROCESSING" && <Loader2 className="h-2.5 w-2.5 animate-spin" />}
+                        {processStatus === "FAILED" && <AlertCircle className="h-2.5 w-2.5" />}
+                        {processStatus === "PENDING" && <Loader2 className="h-2.5 w-2.5" />}
+                        {processStatus}
                     </Badge>
                 </div>
             )}
@@ -180,6 +208,12 @@ export function FileCard({
                                     ))}
                                 </DropdownMenuSubContent>
                             </DropdownMenuSub>
+                            {processStatus === "FAILED" && (
+                                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onRetry?.(); }} className="gap-2">
+                                    <RefreshCw className="h-4 w-4" />
+                                    Retry Processing
+                                </DropdownMenuItem>
+                            )}
                             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDelete?.(); }} className="text-destructive focus:text-destructive gap-2">
                                 <Trash2 className="h-4 w-4" />
                                 Delete

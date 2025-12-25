@@ -35,6 +35,12 @@ export interface Message {
     role: "user" | "assistant";
     content: string;
     timestamp: Date;
+    sources?: {
+        fileName: string;
+        fileId: string;
+        tag?: string;
+        similarity?: number;
+    }[];
 }
 
 export interface Subject {
@@ -57,6 +63,9 @@ export interface FileItem {
     size: number;
     subjectId: string;
     tag?: FileTag;
+    processStatus?: "PENDING" | "PROCESSING" | "COMPLETED" | "FAILED";
+    processedAt?: Date;
+    chunkCount?: number;
     uploadedAt: Date;
     thumbnailUrl?: string;
 }
@@ -69,6 +78,7 @@ interface AppState {
     currentSubjectId: string | null;
     currentConversationId: string | null;
     sidebarOpen: boolean;
+    studyMode: "ANSWER" | "EXPLAIN" | "QUIZ" | "REVIEW";
     isLoading: boolean;
     error: string | null;
 }
@@ -79,6 +89,7 @@ interface AppContextValue extends AppState {
     setCurrentSubjectId: (id: string | null) => void;
     setCurrentConversationId: (id: string | null) => void;
     setSidebarOpen: (open: boolean) => void;
+    setStudyMode: (mode: "ANSWER" | "EXPLAIN" | "QUIZ" | "REVIEW") => void;
     addSubject: (name: string, color: string) => Promise<Subject | null>;
     addConversation: (subjectId: string, title: string) => Promise<Conversation | null>;
     addMessage: (conversationId: string, role: "user" | "assistant", content: string) => Message;
@@ -137,6 +148,7 @@ function mapConversationResponse(conv: ConversationResponse): Conversation {
             role: m.role.toLowerCase() as "user" | "assistant",
             content: m.content,
             timestamp: new Date(m.createdAt),
+            sources: m.sources,
         })) || [],
         isPinned: conv.isPinned || false,
         createdAt: new Date(conv.createdAt),
@@ -166,6 +178,9 @@ function mapFileResponse(file: FileResponse): FileItem {
         size: file.size,
         subjectId: file.subjectId,
         tag: file.tag ? tagMap[file.tag] : undefined,
+        processStatus: file.processStatus,
+        processedAt: file.processedAt ? new Date(file.processedAt) : undefined,
+        chunkCount: file.chunkCount,
         uploadedAt: new Date(file.createdAt),
     };
 }
@@ -179,6 +194,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         currentSubjectId: null,
         currentConversationId: null,
         sidebarOpen: true,
+        studyMode: "ANSWER",
         isLoading: true,
         error: null,
     });
@@ -279,6 +295,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const setSidebarOpen = (open: boolean) => {
         setState((prev) => ({ ...prev, sidebarOpen: open }));
+    };
+
+    const setStudyMode = (mode: "ANSWER" | "EXPLAIN" | "QUIZ" | "REVIEW") => {
+        setState((prev) => ({ ...prev, studyMode: mode }));
     };
 
     const addSubject = async (name: string, color: string): Promise<Subject | null> => {
@@ -490,6 +510,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         setCurrentSubjectId,
         setCurrentConversationId,
         setSidebarOpen,
+        setStudyMode,
         addSubject,
         addConversation,
         addMessage,

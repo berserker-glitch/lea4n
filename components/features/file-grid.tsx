@@ -10,6 +10,7 @@ interface FileGridProps {
     onFileDelete?: (fileId: string) => void;
     onFileDownload?: (fileId: string) => void;
     onFileTagChange?: (fileId: string, tag: FileTag) => void;
+    onFileRetry?: (fileId: string) => void;
     className?: string;
 }
 
@@ -19,6 +20,7 @@ export function FileGrid({
     onFileDelete,
     onFileDownload,
     onFileTagChange,
+    onFileRetry,
     className,
 }: FileGridProps) {
     if (files.length === 0) {
@@ -40,6 +42,7 @@ export function FileGrid({
                     onDelete={() => onFileDelete?.(file.id)}
                     onDownload={() => onFileDownload?.(file.id)}
                     onTagChange={(tag) => onFileTagChange?.(file.id, tag)}
+                    onRetry={() => onFileRetry?.(file.id)}
                 />
             ))}
         </div>
