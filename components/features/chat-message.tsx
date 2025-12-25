@@ -165,8 +165,8 @@ export function ChatMessage({
             </Avatar>
 
             <div className={cn(
-                "flex max-w-[85%] flex-col gap-1",
-                isUser ? "items-end" : "items-start"
+                "flex flex-col gap-1",
+                isUser ? "items-end max-w-[85%]" : "items-start max-w-[85%]"
             )}>
                 <div className={cn(
                     "flex items-center gap-2 px-1",
@@ -187,13 +187,13 @@ export function ChatMessage({
 
                 <div
                     className={cn(
-                        "relative px-5 py-3.5 text-sm shadow-sm",
+                        "relative px-5 py-3.5 text-sm shadow-sm w-full",
                         isUser
                             ? "rounded-2xl rounded-tr-md bg-primary text-primary-foreground"
                             : "rounded-2xl rounded-tl-md bg-transparent text-foreground pl-0 shadow-none"
                     )}
                 >
-                    <div className="prose prose-sm dark:prose-invert max-w-none break-words leading-relaxed">
+                    <div className="prose prose-sm dark:prose-invert max-w-full break-words leading-relaxed [&>div]:max-w-full">
                         {isLoading ? (
                             <div className="flex items-center gap-1.5 py-1">
                                 <div className="h-1.5 w-1.5 rounded-full bg-current animate-bounce [animation-delay:-0.3s]" />
@@ -215,7 +215,7 @@ export function ChatMessage({
                                         if (isInline) {
                                             return (
                                                 <code
-                                                    className="bg-primary/10 text-primary px-1.5 py-0.5 rounded text-[13px] font-mono font-medium"
+                                                    className="bg-primary/15 text-primary px-1.5 py-0.5 rounded-md text-[13px] font-mono font-medium border border-primary/20"
                                                     {...props}
                                                 >
                                                     {children}
@@ -235,7 +235,7 @@ export function ChatMessage({
                                             </code>
                                         );
                                     },
-                                    // Style pre blocks with header and copy
+                                    // Style pre blocks with header and copy - ChatGPT style
                                     pre: ({ children }) => {
                                         const codeElement = children as any;
                                         const className = codeElement?.props?.className || '';
@@ -244,54 +244,67 @@ export function ChatMessage({
                                         const codeContent = codeElement?.props?.children || '';
 
                                         return (
-                                            <div className="relative group/code my-4 rounded-xl overflow-hidden border border-border/50 bg-zinc-950 dark:bg-zinc-900">
-                                                <div className="flex items-center justify-between px-4 py-2 bg-zinc-800/50 border-b border-border/30">
-                                                    <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
+                                            <div className="contain-inline-size rounded-xl my-4 relative bg-zinc-900 border border-border/30">
+                                                <div className="flex items-center justify-between px-4 py-2 text-xs bg-zinc-800/60 rounded-t-xl">
+                                                    <span className="text-zinc-400 font-medium uppercase tracking-wider text-[11px]">
                                                         {language}
                                                     </span>
                                                     <button
                                                         onClick={() => {
                                                             navigator.clipboard.writeText(String(codeContent).replace(/\n$/, ''));
                                                         }}
-                                                        className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-1"
+                                                        className="text-zinc-500 hover:text-zinc-300 transition-colors flex items-center gap-1 text-[11px]"
                                                     >
                                                         <Copy className="h-3 w-3" />
                                                         Copy
                                                     </button>
                                                 </div>
-                                                <pre className="overflow-x-auto p-4 text-zinc-100">
-                                                    {children}
-                                                </pre>
+                                                <div className="overflow-y-auto p-4 pr-6">
+                                                    <code className="whitespace-pre text-zinc-100 text-sm font-mono block">
+                                                        {codeContent}
+                                                    </code>
+                                                </div>
                                             </div>
                                         );
                                     },
                                     // Style headings
                                     h1: ({ children }) => (
-                                        <h1 className="text-lg font-bold mt-4 mb-2 pb-1 border-b border-border/30">{children}</h1>
+                                        <h1 className="text-base font-bold mt-4 mb-2 text-foreground">{children}</h1>
                                     ),
                                     h2: ({ children }) => (
-                                        <h2 className="text-base font-semibold mt-3 mb-1.5">{children}</h2>
+                                        <h2 className="text-sm font-bold mt-3 mb-1.5 text-foreground">{children}</h2>
                                     ),
                                     h3: ({ children }) => (
-                                        <h3 className="text-sm font-semibold mt-2 mb-1">{children}</h3>
+                                        <h3 className="text-sm font-semibold mt-2 mb-1 text-foreground/90">{children}</h3>
                                     ),
-                                    // Style paragraphs - compact
+                                    // Style paragraphs
                                     p: ({ children }) => (
-                                        <p className="my-1.5 leading-6">{children}</p>
+                                        <p className="my-2 leading-relaxed text-foreground/90">{children}</p>
                                     ),
-                                    // Style lists - compact
+                                    // Style unordered lists
                                     ul: ({ children }) => (
-                                        <ul className="my-1.5 ml-4 space-y-0.5">{children}</ul>
+                                        <ul className="my-2 space-y-1 list-none">{children}</ul>
                                     ),
+                                    // Style ordered lists
                                     ol: ({ children }) => (
-                                        <ol className="my-1.5 ml-4 space-y-0.5 list-decimal">{children}</ol>
+                                        <ol className="my-2 ml-4 space-y-1 list-decimal marker:text-primary/70 marker:font-semibold">{children}</ol>
                                     ),
-                                    li: ({ children }) => (
-                                        <li className="leading-6 flex items-start gap-2">
-                                            <span className="inline-block w-1.5 h-1.5 rounded-full bg-primary/60 mt-2 shrink-0" />
-                                            <span>{children}</span>
-                                        </li>
-                                    ),
+                                    // Style list items with colored bullets for ul
+                                    li: ({ children, ...props }) => {
+                                        // Check if parent is ol or ul by looking at ordered prop
+                                        const isOrdered = (props as any).ordered;
+                                        if (isOrdered) {
+                                            return (
+                                                <li className="leading-relaxed pl-1 text-foreground/90">{children}</li>
+                                            );
+                                        }
+                                        return (
+                                            <li className="leading-relaxed flex items-baseline gap-2 text-foreground/90">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0 mt-2" />
+                                                <span className="flex-1">{children}</span>
+                                            </li>
+                                        );
+                                    },
                                     // Style blockquotes - compact
                                     blockquote: ({ children }) => (
                                         <blockquote className="border-l-3 border-primary/60 bg-primary/5 pl-3 pr-2 py-1.5 my-2 rounded-r italic text-foreground/80 text-sm">

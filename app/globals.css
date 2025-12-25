@@ -226,3 +226,31 @@
 [data-state="open"][data-radix-collapsible-content] {
   overflow: visible !important;
 }
+
+/* Code block horizontal scrolling */
+.prose pre {
+  max-width: 100% !important;
+  overflow-x: auto !important;
+}
+
+.prose pre::-webkit-scrollbar {
+  height: 8px;
+}
+
+.prose pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.prose pre::-webkit-scrollbar-thumb {
+  background: #52525b;
+  border-radius: 4px;
+}
+
+.prose pre::-webkit-scrollbar-thumb:hover {
+  background: #71717a;
+}
+
+/* ChatGPT-style contain inline size for code blocks */
+.contain-inline-size {
+  contain: inline-size;
+}
