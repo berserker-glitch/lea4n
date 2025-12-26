@@ -1,6 +1,6 @@
 "use client";
 
-import { AuthCard } from "@/components/auth/auth-card";
+import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import { signup } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 export default function SignupPage() {
     const router = useRouter();
@@ -40,97 +41,124 @@ export default function SignupPage() {
     };
 
     return (
-        <AuthCard
-            title="Create your account"
-            description="Start your learning journey with Lea4n"
-            footer={
-                <p>
+        <AuthSplitLayout
+            title="Create an account"
+            description="Enter your email below to create your account"
+            testimonial={{
+                quote: "My grades went from Bs to As within a month. The subject-specific memory feels like magic—it actually understands what I'm studying.",
+                author: "Michael Chen",
+                role: "Computer Science Student, Berkeley"
+            }}
+        >
+            <div className="grid gap-6">
+                <form onSubmit={handleSubmit}>
+                    <div className="grid gap-4">
+                        {error && (
+                            <div className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-md">
+                                {error}
+                            </div>
+                        )}
+                        <div className="grid gap-2">
+                            <Label htmlFor="name">Full Name</Label>
+                            <Input
+                                id="name"
+                                placeholder="John Doe"
+                                type="text"
+                                autoCapitalize="words"
+                                autoComplete="name"
+                                autoCorrect="off"
+                                disabled={isLoading}
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                className="bg-background"
+                                required
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input
+                                id="email"
+                                placeholder="name@example.com"
+                                type="email"
+                                autoCapitalize="none"
+                                autoComplete="email"
+                                autoCorrect="off"
+                                disabled={isLoading}
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="bg-background"
+                                required
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="password">Password</Label>
+                            <PasswordInput
+                                id="password"
+                                placeholder="••••••••"
+                                disabled={isLoading}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="bg-background"
+                                required
+                                minLength={8}
+                            />
+                            <p className="text-[0.8rem] text-muted-foreground">
+                                Must be at least 8 characters
+                            </p>
+                        </div>
+                        <div className="flex items-start space-x-2">
+                            <Checkbox
+                                id="terms"
+                                checked={agreedToTerms}
+                                onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
+                                disabled={isLoading}
+                            />
+                            <Label htmlFor="terms" className="text-sm font-normal leading-tight">
+                                I agree to the{" "}
+                                <Link href="/terms" className="text-primary hover:underline underline-offset-4">
+                                    Terms of Service
+                                </Link>{" "}
+                                and{" "}
+                                <Link href="/privacy" className="text-primary hover:underline underline-offset-4">
+                                    Privacy Policy
+                                </Link>
+                            </Label>
+                        </div>
+                        <Button disabled={isLoading || !agreedToTerms} className="w-full shadow-lg shadow-primary/20">
+                            {isLoading && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+                            Create Account
+                        </Button>
+                    </div>
+                </form>
+
+                <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">
+                            Or continue with
+                        </span>
+                    </div>
+                </div>
+
+                <div className="grid gap-2">
+                    <SocialButton provider="google" />
+                    <SocialButton provider="github" />
+                </div>
+
+                <p className="px-8 text-center text-sm text-muted-foreground">
                     Already have an account?{" "}
-                    <Link href="/login" className="text-primary hover:underline font-medium">
+                    <Link
+                        href="/login"
+                        className="underline underline-offset-4 hover:text-primary font-medium"
+                    >
                         Sign in
                     </Link>
                 </p>
-            }
-        >
-            <form onSubmit={handleSubmit} className="space-y-4">
-                {error && (
-                    <div className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-950/20 rounded-md">
-                        {error}
-                    </div>
-                )}
-                <div className="space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input
-                        id="name"
-                        type="text"
-                        placeholder="John Doe"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        required
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                        id="email"
-                        type="email"
-                        placeholder="you@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                    />
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <PasswordInput
-                        id="password"
-                        placeholder="Create a password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        minLength={8}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                        Must be at least 8 characters with uppercase, lowercase, and number
-                    </p>
-                </div>
-                <div className="flex items-start space-x-2">
-                    <Checkbox
-                        id="terms"
-                        checked={agreedToTerms}
-                        onCheckedChange={(checked) => setAgreedToTerms(checked === true)}
-                    />
-                    <Label htmlFor="terms" className="text-sm font-normal leading-tight">
-                        I agree to the{" "}
-                        <Link href="/terms" className="text-primary hover:underline">
-                            Terms of Service
-                        </Link>{" "}
-                        and{" "}
-                        <Link href="/privacy" className="text-primary hover:underline">
-                            Privacy Policy
-                        </Link>
-                    </Label>
-                </div>
-                <Button
-                    type="submit"
-                    className="w-full"
-                    disabled={isLoading || !agreedToTerms}
-                >
-                    {isLoading ? "Creating account..." : "Create account"}
-                </Button>
-            </form>
-
-            <div className="relative my-4">
-                <Separator />
-                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-                    or continue with
-                </span>
             </div>
-
-            <div className="space-y-2">
-                <SocialButton provider="google" />
-                <SocialButton provider="github" />
-            </div>
-        </AuthCard>
+        </AuthSplitLayout>
     );
 }

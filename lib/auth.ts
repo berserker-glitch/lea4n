@@ -1,15 +1,15 @@
 /**
  * Authentication utilities using the backend API
  */
-import { authApi, getToken, removeToken, ApiError } from "./api";
+import { authApi, getToken, removeToken, ApiError, UserRole } from "./api";
 
 export interface User {
     id: string;
     name: string | null;
     email: string;
+    role: UserRole;
     createdAt?: string;
 }
-
 const USER_STORAGE_KEY = "lea4n_user";
 
 /**
@@ -61,6 +61,7 @@ export async function login(
                 id: response.data.user.id,
                 name: response.data.user.name,
                 email: response.data.user.email,
+                role: response.data.user.role,
                 createdAt: response.data.user.createdAt,
             };
             setUser(user);
@@ -92,6 +93,7 @@ export async function signup(
                 id: response.data.user.id,
                 name: response.data.user.name,
                 email: response.data.user.email,
+                role: response.data.user.role,
                 createdAt: response.data.user.createdAt,
             };
             setUser(user);
@@ -133,6 +135,7 @@ export async function fetchProfile(): Promise<User | null> {
                 id: response.data.id,
                 name: response.data.name,
                 email: response.data.email,
+                role: response.data.role,
                 createdAt: response.data.createdAt,
             };
             setUser(user);

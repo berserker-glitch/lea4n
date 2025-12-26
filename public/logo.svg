@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 80" fill="none">
+  <!-- Icon Container -->
+  <rect width="80" height="80" rx="16" fill="#8b5cf6"/>
+  
+  <!-- Icon (Scaled to fit 80x80) -->
+  <g transform="translate(16, 16) scale(2)" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+    <path d="M6 12v5c3 3 9 3 12 0v-5" />
+  </g>
+  
+  <!-- Text -->
+  <text x="100" y="52" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" font-size="48" fill="#18181b">Lea4n</text>
+  
+  <!-- For Dark Mode support (via media query if embedded, but hardcoded here to dark gray) -->
+</svg>

@@ -1,0 +1,21 @@
+{
+    "name": "Lea4n - AI-Powered Learning Platform",
+    "short_name": "Lea4n",
+    "description": "Study smarter with AI. Upload materials, organize by subject, and let AI help you understand everything.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0a0a0a",
+    "theme_color": "#7c3aed",
+    "icons": [
+        {
+            "src": "/android-chrome-192x192.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "/android-chrome-512x512.png",
+            "sizes": "512x512",
+            "type": "image/png"
+        }
+    ]
+}

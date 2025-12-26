@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useApp, FileTag } from "@/lib/store";
-import { filesApi, chatApi, FileTag as ApiFileTag, MessageResponse } from "@/lib/api";
+import { filesApi, chatApi, FileTag as ApiFileTag, MessageResponse, TokenUsage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // Components
@@ -16,7 +16,7 @@ import { SearchInput } from "@/components/features/search-input";
 import { UploadFilesDialog } from "@/components/features/upload-files-dialog";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Upload, FileText, ArrowLeft } from "lucide-react";
+import { Upload, FileText, ArrowLeft, Activity } from "lucide-react";
 
 export default function ConversationPage() {
     const params = useParams();
@@ -45,6 +45,7 @@ export default function ConversationPage() {
     const [isLoadingMessages, setIsLoadingMessages] = useState(false);
     const [isSending, setIsSending] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [tokenUsage, setTokenUsage] = useState<TokenUsage | null>(null);
 
     // Files state
     const [searchQuery, setSearchQuery] = useState("");
@@ -142,6 +143,9 @@ export default function ConversationPage() {
                     setStreamingContent("");
                     setStreamingSources([]);
                     refreshData();
+                },
+                (usage) => {
+                    setTokenUsage(usage);
                 }
             );
         } catch (err) {
@@ -247,8 +251,42 @@ export default function ConversationPage() {
                         onChange={(view) => router.push(`?view=${view}`)}
                     />
                 </div>
+                {/* Token Usage Display */}
+                <div className="flex items-center gap-2">
+                    {tokenUsage && (
+                        <div className="group relative flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/50 text-xs text-muted-foreground">
+                            <Activity className="h-3 w-3" />
+                            <span>~{tokenUsage.total.toLocaleString()} tokens</span>
 
-                <div className="w-[100px]" />
+                            {/* Tooltip with breakdown */}
+                            <div className="absolute right-0 top-full mt-2 w-48 p-3 rounded-lg bg-popover border shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
+                                <div className="text-xs font-medium mb-2">Context Window</div>
+                                <div className="space-y-1.5 text-xs">
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">System:</span>
+                                        <span>{tokenUsage.systemPrompt.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">History:</span>
+                                        <span>{tokenUsage.conversationHistory.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">RAG Context:</span>
+                                        <span>{tokenUsage.ragContext.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-muted-foreground">Files:</span>
+                                        <span>{tokenUsage.files}</span>
+                                    </div>
+                                    <div className="border-t pt-1.5 mt-1.5 flex justify-between font-medium">
+                                        <span>Total:</span>
+                                        <span>~{tokenUsage.total.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </header>
 
             {/* Content */}

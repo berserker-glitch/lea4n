@@ -54,10 +54,13 @@ export interface ApiResponse<T = unknown> {
     };
 }
 
+export type UserRole = "USER" | "SUPERADMIN";
+
 export interface AuthUser {
     id: string;
     email: string;
     name: string | null;
+    role: UserRole;
     createdAt: string;
 }
 
@@ -342,6 +345,14 @@ export const conversationsApi = {
 // CHAT API (Messages)
 // ===========================================
 
+export interface TokenUsage {
+    systemPrompt: number;
+    conversationHistory: number;
+    ragContext: number;
+    files: number;
+    total: number;
+}
+
 export interface SendMessageResponse {
     userMessage: MessageResponse;
     assistantMessage: MessageResponse;
@@ -364,12 +375,14 @@ export const chatApi = {
      * @param content - The message content  
      * @param onChunk - Callback for each content chunk
      * @param onComplete - Callback when streaming completes with full response
+     * @param onTokenUsage - Optional callback for token usage data
      */
     async sendMessageStream(
         conversationId: string,
         content: string,
         onChunk: (chunk: string) => void,
-        onComplete: (userMessage: MessageResponse, assistantMessage: MessageResponse, sources: any[]) => void
+        onComplete: (userMessage: MessageResponse, assistantMessage: MessageResponse, sources: any[]) => void,
+        onTokenUsage?: (usage: TokenUsage) => void
     ) {
         const token = getToken();
 
@@ -420,6 +433,11 @@ export const chatApi = {
                             assistantMessage = parsed.data;
                         } else if (parsed.type === "sources") {
                             sources = parsed.data;
+                        } else if (parsed.type === "tokenUsage" || parsed.type === "tokenUsageFinal") {
+                            // Send token usage to callback
+                            if (onTokenUsage) {
+                                onTokenUsage(parsed.data);
+                            }
                         } else if (parsed.content) {
                             // Content chunk from streaming
                             onChunk(parsed.content);
@@ -639,3 +657,137 @@ export const feedbackApi = {
     },
 };
 
+// ===========================================
+// ADMIN API (SUPERADMIN only)
+// ===========================================
+
+export interface AdminUser {
+    id: string;
+    email: string;
+    name: string | null;
+    role: UserRole;
+    createdAt: string;
+    updatedAt: string;
+    _count: {
+        subjects: number;
+        conversations: number;
+        files: number;
+    };
+}
+
+export interface AdminUserDetail extends AdminUser {
+    subjects: Array<{
+        id: string;
+        title: string;
+        description: string | null;
+        createdAt: string;
+        _count: {
+            conversations: number;
+            files: number;
+        };
+    }>;
+}
+
+export interface AdminConversation {
+    id: string;
+    title: string;
+    createdAt: string;
+    updatedAt: string;
+    subject: {
+        id: string;
+        title: string;
+    };
+    _count: {
+        messages: number;
+    };
+}
+
+export interface AdminMessage {
+    id: string;
+    content: string;
+    role: "USER" | "ASSISTANT" | "SYSTEM";
+    createdAt: string;
+}
+
+export interface AdminStats {
+    totalUsers: number;
+    totalSubjects: number;
+    totalConversations: number;
+    totalMessages: number;
+    totalFiles: number;
+    recentUsers: Array<{
+        id: string;
+        email: string;
+        name: string | null;
+        createdAt: string;
+    }>;
+}
+
+export const adminApi = {
+    /**
+     * Get admin dashboard stats
+     */
+    async getStats() {
+        return request<AdminStats>("/admin/stats");
+    },
+
+    /**
+     * List all users with pagination
+     */
+    async listUsers(params?: { page?: number; limit?: number; search?: string }) {
+        const searchParams = new URLSearchParams();
+        if (params?.page) searchParams.set("page", String(params.page));
+        if (params?.limit) searchParams.set("limit", String(params.limit));
+        if (params?.search) searchParams.set("search", params.search);
+
+        const query = searchParams.toString();
+        return request<AdminUser[]>(`/admin/users${query ? `?${query}` : ""}`);
+    },
+
+    /**
+     * Get user details with subjects
+     */
+    async getUser(userId: string) {
+        return request<AdminUserDetail>(`/admin/users/${userId}`);
+    },
+
+    /**
+     * Get all conversations for a user
+     */
+    async getUserConversations(
+        userId: string,
+        params?: { page?: number; limit?: number; subjectId?: string }
+    ) {
+        const searchParams = new URLSearchParams();
+        if (params?.page) searchParams.set("page", String(params.page));
+        if (params?.limit) searchParams.set("limit", String(params.limit));
+        if (params?.subjectId) searchParams.set("subjectId", params.subjectId);
+
+        const query = searchParams.toString();
+        return request<AdminConversation[]>(`/admin/users/${userId}/conversations${query ? `?${query}` : ""}`);
+    },
+
+    /**
+     * Get messages for any conversation (admin access)
+     */
+    async getConversationMessages(
+        conversationId: string,
+        params?: { page?: number; limit?: number }
+    ) {
+        const searchParams = new URLSearchParams();
+        if (params?.page) searchParams.set("page", String(params.page));
+        if (params?.limit) searchParams.set("limit", String(params.limit));
+
+        const query = searchParams.toString();
+        return request<{
+            conversation: {
+                id: string;
+                title: string;
+                createdAt: string;
+                user: { id: string; email: string; name: string | null };
+                subject: { id: string; title: string };
+            };
+            messages: AdminMessage[];
+        }>(`/admin/conversations/${conversationId}/messages${query ? `?${query}` : ""}`);
+    },
+};

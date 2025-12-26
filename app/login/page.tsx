@@ -1,6 +1,6 @@
 "use client";
 
-import { AuthCard } from "@/components/auth/auth-card";
+import { AuthSplitLayout } from "@/components/auth/auth-split-layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,6 +11,7 @@ import { login } from "@/lib/auth";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -35,69 +36,94 @@ export default function LoginPage() {
     };
 
     return (
-        <AuthCard
+        <AuthSplitLayout
             title="Welcome back"
             description="Sign in to your account to continue learning"
-            footer={
-                <p>
+            testimonial={{
+                quote: "Lea4n entirely changed how I prepare for my medical exams. It's like having a tutor who knows exactly what I need to focus on.",
+                author: "Sarah Jenkins",
+                role: "Medical Student, Stanford"
+            }}
+        >
+            <div className="grid gap-6">
+                <form onSubmit={handleSubmit}>
+                    <div className="grid gap-4">
+                        {error && (
+                            <div className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-md">
+                                {error}
+                            </div>
+                        )}
+                        <div className="grid gap-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input
+                                id="email"
+                                placeholder="name@example.com"
+                                type="email"
+                                autoCapitalize="none"
+                                autoComplete="email"
+                                autoCorrect="off"
+                                disabled={isLoading}
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="bg-background"
+                                required
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <div className="flex items-center justify-between">
+                                <Label htmlFor="password">Password</Label>
+                                <Link
+                                    href="#"
+                                    className="text-sm font-medium text-primary hover:text-primary/80"
+                                >
+                                    Forgot password?
+                                </Link>
+                            </div>
+                            <PasswordInput
+                                id="password"
+                                placeholder="••••••••"
+                                disabled={isLoading}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="bg-background"
+                                required
+                            />
+                        </div>
+                        <Button disabled={isLoading} className="w-full shadow-lg shadow-primary/20">
+                            {isLoading && (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+                            Sign In
+                        </Button>
+                    </div>
+                </form>
+
+                <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                        <span className="w-full border-t" />
+                    </div>
+                    <div className="relative flex justify-center text-xs uppercase">
+                        <span className="bg-background px-2 text-muted-foreground">
+                            Or continue with
+                        </span>
+                    </div>
+                </div>
+
+                <div className="grid gap-2">
+                    <SocialButton provider="google" />
+                    <SocialButton provider="github" />
+                </div>
+
+                <p className="px-8 text-center text-sm text-muted-foreground">
                     Don&apos;t have an account?{" "}
-                    <Link href="/signup" className="text-primary hover:underline font-medium">
+                    <Link
+                        href="/signup"
+                        className="underline underline-offset-4 hover:text-primary font-medium"
+                    >
                         Sign up
                     </Link>
                 </p>
-            }
-        >
-            <form onSubmit={handleSubmit} className="space-y-4">
-                {error && (
-                    <div className="p-3 text-sm text-red-500 bg-red-50 dark:bg-red-950/20 rounded-md">
-                        {error}
-                    </div>
-                )}
-                <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                        id="email"
-                        type="email"
-                        placeholder="you@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
-                        required
-                    />
-                </div>
-                <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                        <Label htmlFor="password">Password</Label>
-                        <Link
-                            href="#"
-                            className="text-sm text-muted-foreground hover:text-primary"
-                        >
-                            Forgot password?
-                        </Link>
-                    </div>
-                    <PasswordInput
-                        id="password"
-                        placeholder="Enter your password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                    />
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Signing in..." : "Sign in"}
-                </Button>
-            </form>
-
-            <div className="relative my-4">
-                <Separator />
-                <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
-                    or continue with
-                </span>
             </div>
-
-            <div className="space-y-2">
-                <SocialButton provider="google" />
-                <SocialButton provider="github" />
-            </div>
-        </AuthCard>
+        </AuthSplitLayout>
     );
 }

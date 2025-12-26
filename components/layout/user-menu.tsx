@@ -28,13 +28,16 @@ import {
     Check,
     Loader2,
     ChevronRight,
+    Crown,
 } from "lucide-react";
+import { UserRole } from "@/lib/api";
 
 interface UserMenuProps {
     user: {
         id: string;
         email: string;
         name: string | null;
+        role?: UserRole;
     };
 }
 
@@ -414,6 +417,20 @@ export function UserMenu({ user }: UserMenuProps) {
                                     </button>
                                 ))}
                             </nav>
+
+                            {/* Admin Link (SUPERADMIN only) */}
+                            {user.role === "SUPERADMIN" && (
+                                <button
+                                    onClick={() => {
+                                        setDialogOpen(false);
+                                        router.push("/admin");
+                                    }}
+                                    className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-amber-600 hover:bg-amber-500/10 transition-colors mb-2"
+                                >
+                                    <Crown className="h-4 w-4" />
+                                    Admin Dashboard
+                                </button>
+                            )}
 
                             {/* Logout Button */}
                             <button

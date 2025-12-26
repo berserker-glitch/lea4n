@@ -58,7 +58,10 @@ export function SocialButton({ provider, onClick, className }: SocialButtonProps
     return (
         <Button
             variant="outline"
-            className={cn("w-full gap-2", className)}
+            className={cn(
+                "w-full gap-2 transition-all duration-300 hover:bg-muted/50 hover:border-primary/30 hover:shadow-md active:scale-[0.98]",
+                className
+            )}
             onClick={onClick}
         >
             {config.icon}
