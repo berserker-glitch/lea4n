@@ -13,12 +13,32 @@ import Link from "next/link";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+
 export default function LoginPage() {
     const router = useRouter();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [isGitHubLoading, setIsGitHubLoading] = useState(false);
+
+    const handleGitHubAuth = async () => {
+        setIsGitHubLoading(true);
+        try {
+            const response = await fetch(`${API_URL}/auth/github`);
+            const data = await response.json();
+            if (data.success && data.data?.authUrl) {
+                window.location.href = data.data.authUrl;
+            } else {
+                setError("Failed to initiate GitHub authentication");
+                setIsGitHubLoading(false);
+            }
+        } catch {
+            setError("Network error. Please try again.");
+            setIsGitHubLoading(false);
+        }
+    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -117,8 +137,15 @@ export default function LoginPage() {
                 </div>
 
                 <div className="grid gap-2">
-                    <SocialButton provider="google" />
-                    <SocialButton provider="github" />
+                    <SocialButton
+                        provider="github"
+                        onClick={handleGitHubAuth}
+                    />
+                    {isGitHubLoading && (
+                        <div className="flex justify-center">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                        </div>
+                    )}
                 </div>
 
                 <p className="px-8 text-center text-sm text-muted-foreground">
