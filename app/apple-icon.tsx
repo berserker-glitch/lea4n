@@ -1,12 +1,14 @@
 import { ImageResponse } from 'next/og'
 
+// Image metadata
 export const size = {
     width: 180,
     height: 180,
 }
 export const contentType = 'image/png'
 
-export default function Icon() {
+// Image generation
+export default function AppleIcon() {
     return new ImageResponse(
         (
             <div
@@ -16,8 +18,8 @@ export default function Icon() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    background: '#8b5cf6', // violet-500
-                    borderRadius: '18%', // Standard iOS rounded square look (though device does rounding, this is for preview)
+                    backgroundColor: '#3B82F6',
+                    borderRadius: '36px',
                 }}
             >
                 <svg
