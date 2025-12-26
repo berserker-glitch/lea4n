@@ -61,6 +61,8 @@ export interface AuthUser {
     email: string;
     name: string | null;
     role: UserRole;
+    isEmailVerified: boolean;
+    setupCompleted: boolean;
     createdAt: string;
 }
 
@@ -224,6 +226,24 @@ export const authApi = {
 
     async changePassword(data: { currentPassword: string; newPassword: string }) {
         return request("/auth/change-password", {
+            method: "POST",
+            body: JSON.stringify(data),
+        });
+    },
+
+    async verifyEmail(data: { email: string; otp: string }) {
+        const response = await request<AuthResponse>("/auth/verify-email", {
+            method: "POST",
+            body: JSON.stringify(data),
+        });
+        if (response.data?.token) {
+            setToken(response.data.token);
+        }
+        return response;
+    },
+
+    async resendOTP(data: { email: string }) {
+        return request<{ message: string }>("/auth/resend-otp", {
             method: "POST",
             body: JSON.stringify(data),
         });
@@ -723,12 +743,57 @@ export interface AdminStats {
     }>;
 }
 
+export type UserSource = "SOCIAL_MEDIA" | "FRIEND_REFERRAL" | "SEARCH_ENGINE" | "SCHOOL" | "YOUTUBE" | "OTHER";
+
+export interface AnalyticsData {
+    sources: { source: UserSource; count: number }[];
+    institutions: { institution: string; count: number }[];
+    growthTrends: { date: string; count: number }[];
+}
+
+export interface OnboardingStatus {
+    isEmailVerified: boolean;
+    setupCompleted: boolean;
+    hasOnboardingAnswers: boolean;
+    subjectsCount: number;
+}
+
+// ===========================================
+// ONBOARDING API
+// ===========================================
+
+export const onboardingApi = {
+    async getStatus() {
+        return request<OnboardingStatus>("/onboarding/status");
+    },
+
+    async saveAnswers(data: { heardFrom: UserSource; institution: string }) {
+        return request("/onboarding/answers", {
+            method: "POST",
+            body: JSON.stringify(data),
+        });
+    },
+
+    async completeSetup() {
+        return request<{ message: string }>("/onboarding/complete", {
+            method: "POST",
+        });
+    },
+};
+
 export const adminApi = {
     /**
      * Get admin dashboard stats
      */
     async getStats() {
         return request<AdminStats>("/admin/stats");
+    },
+
+    /**
+     * Get analytics data (sources, institutions, user growth)
+     */
+    async getAnalytics() {
+        return request<AnalyticsData>("/admin/analytics");
     },
 
     /**

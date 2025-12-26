@@ -31,7 +31,14 @@ export default function LoginPage() {
             setError(result.error);
             setIsLoading(false);
         } else {
-            router.push("/dashboard");
+            // Redirect based on verification/setup status
+            if (!result.user.isEmailVerified) {
+                router.push("/verify-email?email=" + encodeURIComponent(email));
+            } else if (!result.user.setupCompleted) {
+                router.push("/setup");
+            } else {
+                router.push("/dashboard");
+            }
         }
     };
 

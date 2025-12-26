@@ -36,7 +36,8 @@ export default function SignupPage() {
             setError(result.error);
             setIsLoading(false);
         } else {
-            router.push("/dashboard");
+            // Redirect to email verification page
+            router.push("/verify-email?email=" + encodeURIComponent(email));
         }
     };
 

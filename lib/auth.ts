@@ -8,6 +8,8 @@ export interface User {
     name: string | null;
     email: string;
     role: UserRole;
+    isEmailVerified: boolean;
+    setupCompleted: boolean;
     createdAt?: string;
 }
 const USER_STORAGE_KEY = "lea4n_user";
@@ -62,6 +64,8 @@ export async function login(
                 name: response.data.user.name,
                 email: response.data.user.email,
                 role: response.data.user.role,
+                isEmailVerified: response.data.user.isEmailVerified,
+                setupCompleted: response.data.user.setupCompleted,
                 createdAt: response.data.user.createdAt,
             };
             setUser(user);
@@ -94,6 +98,8 @@ export async function signup(
                 name: response.data.user.name,
                 email: response.data.user.email,
                 role: response.data.user.role,
+                isEmailVerified: response.data.user.isEmailVerified,
+                setupCompleted: response.data.user.setupCompleted,
                 createdAt: response.data.user.createdAt,
             };
             setUser(user);
@@ -136,6 +142,8 @@ export async function fetchProfile(): Promise<User | null> {
                 name: response.data.name,
                 email: response.data.email,
                 role: response.data.role,
+                isEmailVerified: response.data.isEmailVerified,
+                setupCompleted: response.data.setupCompleted,
                 createdAt: response.data.createdAt,
             };
             setUser(user);
