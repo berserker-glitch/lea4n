@@ -5,9 +5,7 @@ import { Container } from "@/components/layout/container";
 import { Logo } from "@/components/layout/logo";
 import {
     GraduationCap,
-    Twitter,
     Github,
-    Linkedin,
     Heart,
     ArrowUpRight
 } from "lucide-react";
@@ -31,9 +29,7 @@ const footerLinks = {
 };
 
 const socialLinks = [
-    { href: "https://twitter.com", icon: Twitter, label: "Twitter" },
-    { href: "https://github.com", icon: Github, label: "GitHub" },
-    { href: "https://linkedin.com", icon: Linkedin, label: "LinkedIn" },
+    { href: "https://github.com/Lea4n-ai", icon: Github, label: "GitHub" },
 ];
 
 export function Footer() {
